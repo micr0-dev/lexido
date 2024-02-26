@@ -12,17 +12,19 @@ import (
 	"os/user"
 	"regexp"
 	"strings"
-	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 const cacheFilePath = "/tmp/lexido_conversation_cache.txt"
+const maxWidth = 200
 
 // Writes conversation to cache file
 func cacheConversation(conversation string) error {
@@ -112,6 +114,8 @@ func pathExists(path string) bool {
 	return !os.IsNotExist(err)
 }
 
+var p *tea.Program
+
 func main() {
 	ctx := context.Background()
 
@@ -130,7 +134,7 @@ func main() {
 				fmt.Println("Failed to automatically append the API key to your shell configuration file. Please add the following line to your .bashrc, .zshrc, or equivalent file manually:")
 				fmt.Printf("export GOOGLE_AI_KEY='%s'\n", apiKey)
 			} else {
-				fmt.Println("API key set successfully for future sessions. Please restart your terminal or source your profile for the changes to take effect.\n")
+				fmt.Print("API key set successfully for future sessions. Please restart your terminal or source your profile for the changes to take effect.\n\n")
 			}
 		} else if scanner.Err() != nil {
 			log.Fatalf("Error reading API key: %v", scanner.Err())
@@ -172,6 +176,9 @@ func main() {
 	//take all args after the first one and join them into a single string
 	text_prompt += strings.Join(os.Args[1:], " ")
 
+	if text_prompt == "" {
+		text_prompt = "The user did not provide a prompt."
+	}
 	// Append piped input to the prompt if available
 	if pipedInput != "" {
 		text_prompt += "\n\nUser also attached via pipe the following input:\n" + pipedInput
@@ -235,17 +242,20 @@ func main() {
 		},
 	}
 
-	var wg sync.WaitGroup
-	contentChannel := make(chan string)
+	// Run the Bubble Tea program
 
-	wg.Add(1)
+	p = tea.NewProgram(initialModel())
+	go func() {
+		if _, err := p.Run(); err != nil {
+			log.Printf("Alas, there's been an error: %v", err)
+			os.Exit(1)
+		}
+	}()
 
 	iter := model.GenerateContentStream(ctx, prompt)
 
 	var responseContent string
 	totalresponse := 1
-
-	go printContentSmoothly(contentChannel, &wg, &totalresponse)
 
 	for {
 		resp, err := iter.Next()
@@ -266,31 +276,18 @@ func main() {
 		}
 
 		for _, part := range resp.Candidates[0].Content.Parts {
-			contentChannel <- fmt.Sprintf("%v", part)
 			totalresponse += len(fmt.Sprintf("%v", part))
-			// fmt.Print(part)
+			p.Send(appendResponseMsg(fmt.Sprintf("%v", part)))
+
 			responseContent += fmt.Sprintf("%v", part)
 		}
 	}
-	close(contentChannel)
 
 	if err := cacheConversation(text_prompt + "\n" + responseContent); err != nil {
 		log.Printf("Warning: Failed to cache conversation. Error: %v", err)
 	}
 
-	wg.Wait()
-
-	commands := parseCommands(responseContent)
-
-	fmt.Println()
-
-	// Run the Bubble Tea program
-
-	p := tea.NewProgram(initialModel(commands))
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
+	select {}
 }
 
 // Function to parse commands from the response @run[<COMMAND>]
@@ -311,26 +308,50 @@ func parseCommands(responseContent string) []string {
 	return commands
 }
 
-func printContentSmoothly(contentChannel <-chan string, wg *sync.WaitGroup, totalresponse *int) {
-	defer wg.Done()
-	var totalprint int
+// Function to highlight all occurrences of @run[<COMMAND>] in the responseContent
+func highlightCommands(responseContent string) string {
+	// Regular expression to find @run[<COMMAND>]
+	re := regexp.MustCompile(`(@run\[(.*?)\])`)
 
-	for content := range contentChannel {
-		length := len(content)
+	// ANSI color codes for highlighting
+	startHighlight := "\033[34m"
+	endHighlight := "\033[0m"
 
-		var chunkSize, sleepMs int
+	// Replace matches with highlighted version
+	highlightedContent := re.ReplaceAllStringFunc(responseContent, func(match string) string {
+		return startHighlight + match[5:len(match)-1] + endHighlight
+	})
 
-		for i := 0; i < length; i += chunkSize {
-			chunkSize = rand.Intn(5) + 1
-			sleepMs = int(math.Max(float64(float64(totalprint)/float64(*totalresponse))*20, 0))
+	return highlightedContent
+}
 
-			end := i + chunkSize
-			if end > length {
-				end = length
-			}
-			fmt.Print(content[i:end])
-			totalprint += end - i
-			time.Sleep(time.Duration(sleepMs) * time.Millisecond)
+// Run commands from model
+func runCommands(m model) {
+	// Filter and concatenate selected commands
+	var commands []string
+	for i, selected := range m.selected {
+		if selected {
+			commands = append(commands, m.choices[i])
+		}
+	}
+
+	for _, cmdStr := range commands {
+		// Prepare the command to be executed
+		// Note: This example uses '/bin/sh', but adjust according to your needs
+		bin, err := exec.LookPath("/bin/sh")
+		if err != nil {
+			println("Failed to find '/bin/sh':", err.Error())
+			return
+		}
+
+		// Prepare arguments for execution
+		// The first argument is conventionally the name of the command being executed
+		args := []string{"sh", "-c", cmdStr}
+
+		// Use syscall.Exec to replace the current process with the new command
+		err = syscall.Exec(bin, args, os.Environ())
+		if err != nil {
+			println("Failed to execute command:", err.Error())
 		}
 	}
 }
@@ -338,96 +359,233 @@ func printContentSmoothly(contentChannel <-chan string, wg *sync.WaitGroup, tota
 // Tea code
 
 type model struct {
-	choices  []string
-	cursor   int
-	selected map[int]struct{}
+	spinner                spinner.Model
+	response               string
+	choices                []string
+	selected               []bool
+	cursor                 int
+	editing                bool
+	input                  string
+	width                  int
+	height                 int
+	displayedContentLength int
+	commandless            bool
 }
 
-func initialModel(commands []string) model {
-	return model{
-		// Our to-do list is a grocery list
-		choices: commands,
+type appendResponseMsg string
 
-		// A map which indicates which choices are selected. We're using
-		// the  map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
-		selected: make(map[int]struct{}),
+func initialModel() model {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	return model{
+		spinner:                s,
+		response:               "",
+		choices:                make([]string, 0),
+		selected:               make([]bool, 0),
+		cursor:                 0,
+		editing:                false,
+		input:                  "",
+		width:                  0,
+		height:                 0,
+		displayedContentLength: 0,
+		commandless:            true,
 	}
 }
 
+func tickCmd(interval time.Duration) tea.Cmd {
+	return tea.Tick(interval, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
+type tickMsg time.Time
+
 func (m model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
-	return nil
+	return tea.Batch(tickCmd(100*time.Millisecond), m.spinner.Tick)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case appendResponseMsg:
+		m.response += string(msg)
+		m.choices = parseCommands(m.response)
+		m.selected = make([]bool, len(m.choices)+1)
+		m.commandless = m.choices == nil || len(m.choices) == 0
+	case tickMsg:
+		totalResponseLength := len(m.response)
+		// Logic to increment displayedContentLength
+		chunkSize := rand.Intn(7) + 2 // Random chunk size between 1 and 5
+		m.displayedContentLength += chunkSize
 
-	// Is it a key press?
+		// Ensure we don't exceed the total content length
+		if m.displayedContentLength > totalResponseLength {
+			m.displayedContentLength = totalResponseLength
+		}
+
+		// Adjust the timing based on the proportion of the content displayed
+		sleepMs := int(math.Max(float64(m.displayedContentLength)/float64(totalResponseLength)*30, 1))
+		interval := time.Duration(sleepMs) * time.Millisecond
+
+		return m, tickCmd(interval)
+
 	case tea.KeyMsg:
-
-		// Cool, what was the actual key pressed?
-		switch msg.String() {
-
-		// These keys should exit the program.
-		case "ctrl+c", "q":
-			return m, tea.Quit
-
-		// The "up" and "k" keys move the cursor up
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
+		if msg.String() == "ctrl+c" || msg.String() == "q" || msg.String() == "esc" {
+			os.Exit(0)
+		}
+		if m.commandless {
+			return m, nil
+		}
+		if m.editing {
+			switch msg.String() {
+			case "esc":
+				m.editing = false
+				m.input = ""
+			case "enter":
+				m.choices[m.cursor] = m.input
+				m.editing = false
+				m.input = ""
+			case "backspace":
+				if len(m.input) > 0 {
+					m.input = m.input[:len(m.input)-1]
+				}
+			default:
+				m.input += msg.String()
 			}
-
-		// The "down" and "j" keys move the cursor down
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
-
-		// The "enter" key and the spacebar (a literal space) toggle
-		// the selected state for the item that the cursor is pointing at.
-		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
+		} else {
+			switch msg.String() {
+			case "enter":
+				if m.cursor != len(m.choices) {
+					m.selected[m.cursor] = !m.selected[m.cursor]
+				} else {
+					fmt.Print("\n\n")
+					runCommands(m)
+					os.Exit(0)
+				}
+			case "j", "down":
+				if m.cursor < len(m.choices) {
+					m.cursor++
+				}
+			case "k", "up":
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			case "e":
+				if m.cursor != len(m.choices) {
+					m.editing = true
+					m.input = m.choices[m.cursor]
+				}
 			}
 		}
-	}
+	case tea.WindowSizeMsg:
+		// Optionally store the new dimensions
+		m.width = msg.Width
+		m.height = msg.Height
+	default:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
+	}
 	return m, nil
 }
 
 func (m model) View() string {
-	// The header
-	s := "\nWhich of the provided commands would you like to run?\n\n"
+	var s strings.Builder
 
-	// Iterate over our choices
-	for i, choice := range m.choices {
+	s.WriteString("\033[0m")
 
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">" // cursor!
-		}
-
-		// Is this choice selected?
-		checked := " " // not selected
-		if _, ok := m.selected[i]; ok {
-			checked = "x" // selected!
-		}
-
-		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+	if m.response == "" {
+		s.WriteString(fmt.Sprintf("%s Initializing...", m.spinner.View()))
+		return s.String()
 	}
 
-	// The footer
-	s += "\nPress q to quit.\n"
+	displayContent := m.response
+	if len(displayContent) > m.displayedContentLength {
+		displayContent = displayContent[:m.displayedContentLength]
+	}
 
-	// Send the UI for rendering
-	return s
+	wrappedResponse := wrapText(highlightCommands(displayContent), min(m.width, maxWidth))
+	s.WriteString(wrappedResponse)
+
+	if m.commandless {
+		return s.String()
+	}
+
+	s.WriteString("\n—————————————————————\n")
+
+	s.WriteString("Command List:\n\n")
+	for i, todo := range m.choices {
+		var selected, color string
+
+		if m.selected[i] {
+			selected = "x"
+			color = "\033[32m"
+		} else {
+			selected = " "
+			color = "\033[0m"
+		}
+		if m.cursor == i {
+			if m.editing {
+				s.WriteString(fmt.Sprintf("> "+color+"["+selected+"] %s█ (editing)\n", m.input))
+			} else {
+				s.WriteString(fmt.Sprintf("> "+color+"["+selected+"] %s\n", todo))
+			}
+		} else {
+			s.WriteString(fmt.Sprintf("  "+color+"["+selected+"] %s\n", todo))
+		}
+		s.WriteString("\033[0m")
+	}
+
+	if m.cursor == len(m.choices) {
+		s.WriteString(">   \033[32m[RUN]\033[0m\n")
+	} else {
+		s.WriteString("    [RUN]\n")
+	}
+
+	if !m.editing {
+		s.WriteString(wrapText("\nPlease select the tasks to run. e to edit a task. q to quit. up/down to select", min(m.width, maxWidth)))
+	} else {
+		s.WriteString(wrapText(("\nEditing: Use normal keys to add text, backspace to delete, enter to save, esc to cancel."), min(m.width, maxWidth)))
+	}
+
+	return s.String()
+}
+
+func wrapText(text string, lineWidth int) string {
+	// Split the text into paragraphs based on newline characters
+	paragraphs := strings.Split(text, "\n")
+
+	var wrappedText strings.Builder
+	for i, paragraph := range paragraphs {
+		// Wrap each paragraph individually
+		wrappedParagraph := wrapParagraph(paragraph, lineWidth)
+		wrappedText.WriteString(wrappedParagraph)
+
+		// Don't add a newline character after the last paragraph
+		if i < len(paragraphs)-1 {
+			wrappedText.WriteString("\n")
+		}
+	}
+
+	return wrappedText.String()
+}
+
+func wrapParagraph(paragraph string, lineWidth int) string {
+	var result strings.Builder
+	words := strings.Fields(strings.TrimSpace(paragraph))
+	if len(words) < 1 {
+		return ""
+	}
+	result.WriteString(words[0])
+	spaceLeft := lineWidth - len(words[0])
+	for _, word := range words[1:] {
+		if len(word)+1 > spaceLeft {
+			result.WriteString("\n" + word)
+			spaceLeft = lineWidth - len(word)
+		} else {
+			result.WriteString(" " + word)
+			spaceLeft -= (1 + len(word))
+		}
+	}
+	return result.String()
 }
