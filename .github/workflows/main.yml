@@ -1,0 +1,75 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - release # Trigger on pushes to the release branch
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            go-version: 1.22.0
+            platform: linux/amd64
+          - os: ubuntu-latest
+            go-version: 1.22.0
+            platform: linux/arm64
+          - os: macos-latest
+            go-version: 1.22.0
+            platform: darwin/amd64
+          - os: macos-latest
+            go-version: 1.22.0
+            platform: darwin/arm64
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Build
+      run: |
+        GOOS=${{ matrix.platform.split('/')[0] }} GOARCH=${{ matrix.platform.split('/')[1] }} go build -v -o lexido-${{ matrix.platform.split('/')[0] }}-${{ matrix.platform.split('/')[1] }} ./...
+
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: lexido-${{ matrix.platform }}
+        path: lexido-${{ matrix.platform.split('/')[0] }}-${{ matrix.platform.split('/')[1] }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/lexido-linux-amd64
+          asset_name: lexido-linux-amd64
+          asset_content_type: application/octet-stream
