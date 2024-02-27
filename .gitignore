@@ -22,3 +22,6 @@ go.work
 
 # Go build binary
 lexido
+
+# Build directory
+build/
