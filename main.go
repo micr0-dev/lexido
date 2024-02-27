@@ -202,6 +202,8 @@ func main() {
 		}
 	}
 
+	p.Send(generationDoneMsg{})
+
 	if err := cacheConversation(text_prompt + "\n" + responseContent); err != nil {
 		log.Printf("Warning: Failed to cache conversation. Error: %v", err)
 	}

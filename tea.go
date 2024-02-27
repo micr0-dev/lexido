@@ -21,15 +21,15 @@ type model struct {
 	choices                []string
 	selected               []bool
 	cursor                 int
-	editing                bool
-	input                  string
 	width                  int
 	height                 int
 	displayedContentLength int
 	commandless            bool
+	isDone                 bool
 }
 
 type appendResponseMsg string
+type generationDoneMsg struct{}
 
 func initialModel() model {
 	s := spinner.New()
@@ -40,12 +40,11 @@ func initialModel() model {
 		choices:                make([]string, 0),
 		selected:               make([]bool, 0),
 		cursor:                 0,
-		editing:                false,
-		input:                  "",
 		width:                  0,
 		height:                 0,
 		displayedContentLength: 0,
 		commandless:            true,
+		isDone:                 false,
 	}
 }
 
@@ -62,7 +61,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.displayedContentLength >= len(m.response) && len(m.response) > 0 && m.commandless {
+	if m.displayedContentLength >= len(m.response) && len(m.response) > 0 && m.commandless && m.isDone {
 		return m.Close(false)
 	}
 
@@ -72,6 +71,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.choices = parseCommands(m.response)
 		m.selected = make([]bool, len(m.choices)+1)
 		m.commandless = m.choices == nil || len(m.choices) == 0
+	case generationDoneMsg:
+		m.isDone = true
 	case tickMsg:
 		totalResponseLength := len(m.response)
 		// Logic to increment displayedContentLength
@@ -96,44 +97,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.commandless {
 			return m, nil
 		}
-		if m.editing {
-			switch msg.String() {
-			case "esc":
-				m.editing = false
-				m.input = ""
-			case "enter":
-				m.choices[m.cursor] = m.input
-				m.editing = false
-				m.input = ""
-			case "backspace":
-				if len(m.input) > 0 {
-					m.input = m.input[:len(m.input)-1]
-				}
-			default:
-				m.input += msg.String()
+
+		switch msg.String() {
+		case "enter":
+			if m.cursor != len(m.choices) {
+				m.selected[m.cursor] = !m.selected[m.cursor]
+			} else {
+				return m.Close(true)
 			}
-		} else {
-			switch msg.String() {
-			case "enter":
-				if m.cursor != len(m.choices) {
-					m.selected[m.cursor] = !m.selected[m.cursor]
-				} else {
-					return m.Close(true)
-				}
-			case "j", "down":
-				if m.cursor < len(m.choices) {
-					m.cursor++
-				}
-			case "k", "up":
-				if m.cursor > 0 {
-					m.cursor--
-				}
-			case "e":
-				if m.cursor != len(m.choices) {
-					m.editing = true
-					m.input = m.choices[m.cursor]
-				}
+		case "j", "down":
+			if m.cursor < len(m.choices) {
+				m.cursor++
 			}
+		case "k", "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+
 		}
 	case tea.WindowSizeMsg:
 		// Optionally store the new dimensions
@@ -199,11 +179,9 @@ func (m model) View() string {
 			color = "\033[0m"
 		}
 		if m.cursor == i {
-			if m.editing {
-				s.WriteString(fmt.Sprintf("> "+color+"["+selected+"] %s█ (editing)\n", m.input))
-			} else {
-				s.WriteString(fmt.Sprintf("> "+color+"["+selected+"] %s\n", todo))
-			}
+
+			s.WriteString(fmt.Sprintf("> "+color+"["+selected+"] %s\n", todo))
+
 		} else {
 			s.WriteString(fmt.Sprintf("  "+color+"["+selected+"] %s\n", todo))
 		}
@@ -216,11 +194,7 @@ func (m model) View() string {
 		s.WriteString("    [RUN]\n")
 	}
 
-	if !m.editing {
-		s.WriteString(wrapText("\nPlease select the tasks to run. e to edit a task. q to quit. up/down to select", min(m.width, maxWidth)))
-	} else {
-		s.WriteString(wrapText(("\nEditing: Use normal keys to add text, backspace to delete, enter to save, esc to cancel."), min(m.width, maxWidth)))
-	}
+	s.WriteString(wrapText("\nPlease select the tasks to run. q to quit. up/down to select", min(m.width, maxWidth)))
 
 	return s.String()
 }
