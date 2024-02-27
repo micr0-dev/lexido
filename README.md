@@ -4,6 +4,13 @@ get things done_
 ## Introduction
 Lexido is an innovative assistant for the Linux command line, designed to boost your productivity and efficiency. Powered by Gemini Pro 1.0 and utilizing the free API, Lexido offers smart suggestions for commands based on your prompts and importantly **your current environment**. Whether you're installing software, managing files, or configuring system settings, Lexido streamlines the process, making it faster and more intuitive.
 
+## Examples
+<p align="center">
+  <img src="./demos/teamspeak_demo.gif" alt="First GIF" width="49%"/>
+  <img src="./demos/drivers_demo.gif" alt="Second GIF" width="49%"/>
+</p>
+
+
 ## Features
 - **Command Suggestions**: Simply type `lexido [prompt]` to get actionable command suggestions.
 - **Cross-Platform**: Support for both Linux and macOS
