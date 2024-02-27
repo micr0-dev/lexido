@@ -108,10 +108,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Get the user's operating system
-	opperatingSystem, err := extractHostnameCtlValue("Operating System")
+	// Detect Operating System (MacOS or Linux)
+	osname, err := runCmd("uname", "-s")
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	var opperatingSystem string
+
+	if strings.Contains(strings.ToLower(osname), "darwin") {
+		opperatingSystem = "macOS"
+	} else {
+		// Get the user's full operating system if not MacOS
+		opperatingSystem, err = extractHostnameCtlValue("Operating System")
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	pre_prompt := defaultPrePrompt
