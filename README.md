@@ -21,6 +21,12 @@ Lexido is an innovative assistant for the Linux command line, designed to boost 
 ## Installation
 Head to the [releases](https://github.com/micr0-dev/lexido/releases) tab to pick up a binary!
 
+To install the binary file, place it into your path and run
+```bash
+chmod +x ./lexido
+```
+Also, rename the binary to `lexido` for easier access.
+
 Currently, lexido is not on any package managers but if you would like that to change please contribute!
 
 ### Compile from source
@@ -58,6 +64,27 @@ lexido -c "add more details or follow-up"
 ```bash
 ls | lexido "what should I do with these files?"
 ```
+
+## FAQ
+
+### Why is the binary so big?
+The binary's size mainly consists of the built-in networking and encryption libraries of Go. 
+A quick inspection showcases this:
+```bash
+> goweight
+   12 MB runtime
+  8.1 MB net/http
+  5.3 MB google.golang.org/protobuf/internal/impl
+  4.1 MB net
+  4.1 MB golang.org/x/net/http2
+  3.9 MB golang.org/x/sys/unix
+  3.7 MB crypto/tls
+  3.3 MB google.golang.org/grpc
+```
+### How does it know what system I am running?
+Before requesting the LLM the program does what is known as prompt building or contextualization, it collects different data about your system and your current scenario to help the LLM more accurately answer. Giving the LLM context about your situation allows it to better understand what you are asking or how to reply.
+
+If you have any more questions feel free to reach out and ask
 
 ## Contributing
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
