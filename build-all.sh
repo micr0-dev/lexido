@@ -25,7 +25,7 @@ for platform in "${PLATFORMS[@]}"; do
     fi
 
     echo "Building for $GOOS $GOARCH..."
-    env GOOS=$GOOS GOARCH=$GOARCH go build -o $OUTPUT
+    env GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-w -s" -o $OUTPUT
 
     # Check if build was successful
     if [ $? -ne 0 ]; then
