@@ -53,10 +53,10 @@ func appendToShellConfig(varName, apiKey string) error {
 		return err
 	}
 	shellConfigPath := ""
-	if pathExists(usr.HomeDir + "/.bashrc") {
-		shellConfigPath = usr.HomeDir + "/.bashrc"
-	} else if pathExists(usr.HomeDir + "/.zshrc") {
+	if pathExists(usr.HomeDir + "/.zshrc") {
 		shellConfigPath = usr.HomeDir + "/.zshrc"
+	} else if pathExists(usr.HomeDir + "/.bashrc") {
+		shellConfigPath = usr.HomeDir + "/.bashrc"
 	} else {
 		return fmt.Errorf("could not find a supported shell configuration file")
 	}
