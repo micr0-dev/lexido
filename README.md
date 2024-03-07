@@ -1,4 +1,4 @@
-![lexidoLogo](https://github.com/micr0-dev/lexido/assets/26364458/a403c155-274d-468e-86ff-88c81d33c481)
+![lexidoLogo](https://github.com/micr0-dev/lexido/assets/26364458/d19ad5bb-e5d2-416d-9319-408325dc1fb8)
 get things done_
 
 ## Introduction
@@ -25,7 +25,10 @@ To install the binary file, place it into your path and run
 ```bash
 chmod +x ./lexido
 ```
-Also, rename the binary to `lexido` for easier access.
+Also, rename the binary to `lexido` for easier access. Such as:
+```bash
+mv /path/to/downladed/binary /bin/lexido
+```
 
 Currently, lexido is not on any package managers but if you would like that to change please contribute!
 
