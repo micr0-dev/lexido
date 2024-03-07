@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,17 @@ import (
 var execCmds []string
 
 func main() {
+	helpPtr := flag.Bool("help", false, "Display help information")
+	hPtr := flag.Bool("h", false, "Display help information")
+	cPtr := flag.Bool("c", false, "Continue previous conversation")
+
+	flag.Parse()
+
+	if *helpPtr || *hPtr {
+		displayHelp()
+		os.Exit(0)
+	}
+
 	ctx := context.Background()
 
 	// Access your API key as an environment variable
@@ -52,14 +64,6 @@ func main() {
 	}
 	defer client.Close()
 
-	continuePrevious := false
-	for _, arg := range os.Args[1:] {
-		if arg == "-c" {
-			continuePrevious = true
-			break
-		}
-	}
-
 	// Read piped input if present
 	pipedInput, err := readPipedInput()
 	if err != nil {
@@ -68,7 +72,7 @@ func main() {
 
 	var text_prompt string
 
-	if continuePrevious {
+	if *cPtr {
 		// Read previous conversation from cache if -c is present
 		cachedConversation, err := readConversationCache()
 		if err != nil {

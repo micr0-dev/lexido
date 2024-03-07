@@ -98,3 +98,21 @@ func extractHostnameCtlValue(field string) (string, error) {
 	// Replace field name and remove leading and trailing white spaces
 	return strings.TrimSpace(strings.ReplaceAll(data, field+":", "")), nil
 }
+
+func displayHelp() {
+	fmt.Println(`Lexido Command Line Tool Usage:
+
+Usage:
+    To get command suggestions:
+        lexido "install teamspeak via docker"
+
+    To continue with a previous prompt:
+        lexido -c "add more details or follow-up"
+
+    To use with piping commands:
+        ls | lexido "what should I do with these files?"
+    
+Options:
+    -h, --help          Display help information
+    -c                  Continue with a previous prompt or add more details to it`)
+}
