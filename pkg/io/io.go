@@ -2,23 +2,48 @@ package io
 
 import (
 	"bufio"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
+	"path/filepath"
 	"strings"
 )
 
-const cacheFilePath = "/tmp/lexido_conversation_cache.txt"
+const cacheDir = ".lexido"
+const cacheFile = "lexido_conversation_cache.txt"
+const keyringFile = "keyring.json"
 
 // Writes conversation to cache file
 func CacheConversation(conversation string) error {
-	return os.WriteFile(cacheFilePath, []byte(conversation), 0644)
+	filePath, err := GetFilePath(cacheFile)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the .lexido directory exists
+	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(conversation), 0644)
 }
 
 // Reads conversation from cache file
 func ReadConversationCache() (string, error) {
-	content, err := os.ReadFile(cacheFilePath)
+	filePath, err := GetFilePath(cacheFile)
+	if err != nil {
+		return "", err
+	}
+
+	// Ensure the .lexido directory exists
+	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	if err != nil {
+		return "", err
+	}
+
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", err
 	}
@@ -47,35 +72,71 @@ func ReadPipedInput() (string, error) {
 	return "", nil // No piped data
 }
 
-func AppendToShellConfig(varName, apiKey string) error {
-	usr, err := user.Current()
+func GetFilePath(file string) (string, error) {
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		return "", err
 	}
-	shellConfigPath := ""
-	if pathExists(usr.HomeDir + "/.zshrc") {
-		shellConfigPath = usr.HomeDir + "/.zshrc"
-	} else if pathExists(usr.HomeDir + "/.bashrc") {
-		shellConfigPath = usr.HomeDir + "/.bashrc"
-	} else {
-		return fmt.Errorf("could not find a supported shell configuration file")
-	}
-
-	// Attempt to append the variable
-	line := fmt.Sprintf("\nexport %s='%s'\n", varName, apiKey)
-	file, err := os.OpenFile(shellConfigPath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(line)
-	return err
+	return filepath.Join(homeDir, cacheDir, file), nil
 }
 
-func pathExists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
+func SaveToKeyring(field string, val string) error {
+	filePath, err := GetFilePath(keyringFile)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the .lexido directory exists
+	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	if err != nil {
+		return err
+	}
+
+	// Load existing data
+	data := make(map[string]string)
+	file, err := os.ReadFile(filePath)
+	if err == nil {
+		json.Unmarshal(file, &data)
+	}
+
+	// Update the data with the new value
+	data[field] = val
+
+	// Write updated data back to file
+	updatedData, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filePath, updatedData, 0600)
+}
+
+func ReadFromKeyring(field string) (string, error) {
+	filePath, err := GetFilePath(keyringFile)
+	if err != nil {
+		return "", err
+	}
+
+	// Read the file
+	file, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	// Unmarshal the data into a map
+	data := make(map[string]string)
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		return "", err
+	}
+
+	// Retrieve the value for the specified field
+	val, ok := data[field]
+	if !ok {
+		return "", errors.New("field not found")
+	}
+
+	return val, nil
 }
 
 // Helper function to run command and return trimmed output string
