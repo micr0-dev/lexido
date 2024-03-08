@@ -37,8 +37,14 @@ func main() {
 
 	ctx := context.Background()
 
-	// Access your API key as an environment variable
+	// Access your API key from keyring or environment variable (backwards compatible with previous versions)
 	apiKey := os.Getenv("GOOGLE_AI_KEY")
+
+	if apiKey == "" {
+		apiKey, _ = io.ReadFromKeyring("GOOGLE_AI_KEY")
+	}
+
+	// If no API key is found, prompt the user to enter it
 	if apiKey == "" {
 		fmt.Println("No API key found.")
 		fmt.Println("Please visit https://aistudio.google.com/app/apikey to obtain your API key.")
@@ -48,11 +54,11 @@ func main() {
 		if scanner.Scan() {
 			apiKey = scanner.Text()
 			os.Setenv("GOOGLE_AI_KEY", apiKey)
-			if err := io.AppendToShellConfig("GOOGLE_AI_KEY", apiKey); err != nil {
-				fmt.Println("Failed to automatically append the API key to your shell configuration file. Please add the following line to your .bashrc, .zshrc, or equivalent file manually:")
+			if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
+				fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually:")
 				fmt.Printf("export GOOGLE_AI_KEY='%s'\n", apiKey)
 			} else {
-				fmt.Print("API key set successfully for future sessions. Please restart your terminal or source your profile for the changes to take effect.\n\n")
+				fmt.Print("API key set successfully for future sessions. \n\n")
 			}
 		} else if scanner.Err() != nil {
 			log.Fatalf("Error reading API key: %v", scanner.Err())
