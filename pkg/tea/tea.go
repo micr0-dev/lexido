@@ -1,4 +1,4 @@
-package main
+package tea
 
 import (
 	"fmt"
@@ -9,12 +9,11 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/micr0-dev/lexido/pkg/commands"
 	"github.com/micr0-dev/lexido/pkg/wrap"
 )
 
 const maxWidth = 200
-
-var p *tea.Program
 
 type model struct {
 	spinner                spinner.Model
@@ -30,11 +29,11 @@ type model struct {
 }
 
 type (
-	appendResponseMsg string
-	generationDoneMsg struct{}
+	AppendResponseMsg string
+	GenerationDoneMsg struct{}
 )
 
-func initialModel() model {
+func InitialModel() model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return model{
@@ -69,12 +68,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case appendResponseMsg:
+	case AppendResponseMsg:
 		m.response += string(msg)
-		m.choices = parseCommands(m.response)
+		m.choices = commands.ParseCommands(m.response)
 		m.selected = make([]bool, len(m.choices)+1)
 		m.commandless = m.choices == nil || len(m.choices) == 0
-	case generationDoneMsg:
+	case GenerationDoneMsg:
 		m.isDone = true
 	case tickMsg:
 		totalResponseLength := len(m.response)
@@ -137,7 +136,7 @@ func (m model) Close(exec bool) (tea.Model, tea.Cmd) {
 	if exec {
 		for i, selected := range m.selected {
 			if selected {
-				execCmds = append(execCmds, m.choices[i])
+				commands.ExecCmds = append(commands.ExecCmds, m.choices[i])
 			}
 		}
 		fmt.Print("\n")
@@ -161,7 +160,7 @@ func (m model) View() string {
 		displayContent = displayContent[:m.displayedContentLength]
 	}
 
-	wrappedResponse := wrap.WrapText(highlightCommands(displayContent), min(m.width, maxWidth))
+	wrappedResponse := wrap.WrapText(commands.HighlightCommands(displayContent), min(m.width, maxWidth))
 	s.WriteString(wrappedResponse)
 
 	if m.commandless {
