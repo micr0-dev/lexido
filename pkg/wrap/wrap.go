@@ -1,15 +1,15 @@
-package main
+package wrap
 
 import "strings"
 
-func wrapText(text string, lineWidth int) string {
+func WrapText(text string, lineWidth int) string {
 	// Split the text into paragraphs based on newline characters
 	paragraphs := strings.Split(text, "\n")
 
 	var wrappedText strings.Builder
 	for i, paragraph := range paragraphs {
 		// Wrap each paragraph individually
-		wrappedParagraph := wrapParagraph(paragraph, lineWidth)
+		wrappedParagraph := WrapParagraph(paragraph, lineWidth)
 		wrappedText.WriteString(wrappedParagraph)
 
 		// Don't add a newline character after the last paragraph
@@ -21,7 +21,7 @@ func wrapText(text string, lineWidth int) string {
 	return wrappedText.String()
 }
 
-func wrapParagraph(paragraph string, lineWidth int) string {
+func WrapParagraph(paragraph string, lineWidth int) string {
 	var result strings.Builder
 	words := strings.Fields(strings.TrimSpace(paragraph))
 	if len(words) < 1 {

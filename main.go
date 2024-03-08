@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/google/generative-ai-go/genai"
+	"github.com/micr0-dev/lexido/pkg/prompt"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 
@@ -130,7 +131,7 @@ func main() {
 		}
 	}
 
-	pre_prompt := defaultPrePrompt
+	pre_prompt := prompt.DefaultPrePrompt
 
 	// Set the default post-prompt
 	pre_prompt += " The user, " + username + ", is currently running " + opperatingSystem + " on " + hostname + " in " + cwd + "."

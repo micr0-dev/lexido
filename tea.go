@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/micr0-dev/lexido/pkg/wrap"
 )
 
 const maxWidth = 200
@@ -28,8 +29,10 @@ type model struct {
 	isDone                 bool
 }
 
-type appendResponseMsg string
-type generationDoneMsg struct{}
+type (
+	appendResponseMsg string
+	generationDoneMsg struct{}
+)
 
 func initialModel() model {
 	s := spinner.New()
@@ -158,7 +161,7 @@ func (m model) View() string {
 		displayContent = displayContent[:m.displayedContentLength]
 	}
 
-	wrappedResponse := wrapText(highlightCommands(displayContent), min(m.width, maxWidth))
+	wrappedResponse := wrap.WrapText(highlightCommands(displayContent), min(m.width, maxWidth))
 	s.WriteString(wrappedResponse)
 
 	if m.commandless {
@@ -179,9 +182,7 @@ func (m model) View() string {
 			color = "\033[0m"
 		}
 		if m.cursor == i {
-
 			s.WriteString(fmt.Sprintf("> "+color+"["+selected+"] %s\n", todo))
-
 		} else {
 			s.WriteString(fmt.Sprintf("  "+color+"["+selected+"] %s\n", todo))
 		}
@@ -194,7 +195,7 @@ func (m model) View() string {
 		s.WriteString("    [RUN]\n")
 	}
 
-	s.WriteString(wrapText("\nPlease select the tasks to run. q to quit. up/down to select", min(m.width, maxWidth)))
+	s.WriteString(wrap.WrapText("\nPlease select the tasks to run. q to quit. up/down to select", min(m.width, maxWidth)))
 
 	return s.String()
 }
