@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"bufio"
@@ -12,12 +12,12 @@ import (
 const cacheFilePath = "/tmp/lexido_conversation_cache.txt"
 
 // Writes conversation to cache file
-func cacheConversation(conversation string) error {
+func CacheConversation(conversation string) error {
 	return os.WriteFile(cacheFilePath, []byte(conversation), 0644)
 }
 
 // Reads conversation from cache file
-func readConversationCache() (string, error) {
+func ReadConversationCache() (string, error) {
 	content, err := os.ReadFile(cacheFilePath)
 	if err != nil {
 		return "", err
@@ -26,7 +26,7 @@ func readConversationCache() (string, error) {
 }
 
 // Helper function to check and read piped input
-func readPipedInput() (string, error) {
+func ReadPipedInput() (string, error) {
 	fileInfo, err := os.Stdin.Stat()
 	if err != nil {
 		return "", err
@@ -47,7 +47,7 @@ func readPipedInput() (string, error) {
 	return "", nil // No piped data
 }
 
-func appendToShellConfig(varName, apiKey string) error {
+func AppendToShellConfig(varName, apiKey string) error {
 	usr, err := user.Current()
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func pathExists(path string) bool {
 }
 
 // Helper function to run command and return trimmed output string
-func runCmd(command string, args ...string) (string, error) {
+func RunCmd(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	data, err := cmd.Output()
 	if err != nil {
@@ -89,9 +89,9 @@ func runCmd(command string, args ...string) (string, error) {
 }
 
 // Helper function to extract value from hostnamectl output
-func extractHostnameCtlValue(field string) (string, error) {
+func ExtractHostnameCtlValue(field string) (string, error) {
 	txtcmd := fmt.Sprintf("hostnamectl | grep \"%s\"", field)
-	data, err := runCmd("bash", "-c", txtcmd)
+	data, err := RunCmd("bash", "-c", txtcmd)
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +99,7 @@ func extractHostnameCtlValue(field string) (string, error) {
 	return strings.TrimSpace(strings.ReplaceAll(data, field+":", "")), nil
 }
 
-func displayHelp() {
+func DisplayHelp() {
 	fmt.Println(`Lexido Command Line Tool Usage:
 
 Usage:
