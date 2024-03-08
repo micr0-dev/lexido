@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-var ExecCmds []string
-
 // Function to parse commands from the response @run[<COMMAND>]
 func ParseCommands(responseContent string) []string {
 	// Regular expression to find @run[<COMMAND>]

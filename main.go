@@ -173,7 +173,9 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	p = tearaw.NewProgram(tea.InitialModel())
+	cmds := new([]string)
+
+	p = tearaw.NewProgram(tea.InitialModel(cmds))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -223,5 +225,5 @@ func main() {
 	wg.Wait()
 
 	// Run the commands
-	commands.RunCommands(commands.ExecCmds)
+	commands.RunCommands(*cmds)
 }
