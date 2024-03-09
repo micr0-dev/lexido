@@ -19,16 +19,31 @@ Lexido is an innovative assistant for the Linux command line, designed to boost 
 - **Efficiency**: Designed with efficiency in mind, Lexido helps you get things done NOW.
 
 ## Installation
-Head to the [releases](https://github.com/micr0-dev/lexido/releases) tab to pick up a binary!
 
-To install the binary file, place it into your path and run
-```bash
-chmod +x ./lexido
-```
-Also, rename the binary to `lexido` for easier access. Such as:
-```bash
-mv /path/to/downladed/binary /bin/lexido
-```
+Head to the [releases](https://github.com/micr0-dev/lexido/releases) tab to pick up a binary!
+Once downloaded, you'll want to make Lexido easily accessible from anywhere on your computer. Here's how:
+
+1. **Rename the downloaded file:**
+
+   The downloaded file might have a long and specific name, like "v1.0-lexido-linux-amd64". For easier use, consider renaming it to just "lexido". 
+
+2. **Make the file executable:**
+
+   Open your terminal and navigate to the folder where you downloaded the Lexido binary. Then, run the following command to make the file executable:
+
+   ```bash
+   chmod +x ./lexido
+   ```
+
+3. **Move the file to your system's path:**
+
+   **Why do this?** By placing the renamed and executable Lexido file in your system's path, you can run it from any terminal window without needing to specify the full path to the file. It's a shortcut for convenience!
+
+   Here's an example command assuming you downloaded Lexido to your Downloads folder:
+
+   ```bash
+   mv ~/Downloads/lexido /usr/local/bin/lexido
+   ```
 
 Currently, lexido is not on any package managers but if you would like that to change please contribute!
 
