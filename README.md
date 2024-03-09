@@ -45,7 +45,7 @@ Once downloaded, you'll want to make Lexido easily accessible from anywhere on y
    mv ~/Downloads/lexido /usr/local/bin/lexido
    ```
 
-    Currently, lexido is not on any package managers but if you would like that to change please contribute!
+Currently, lexido is not on any package managers but if you would like that to change please contribute!
 
 ### Compile from source
 Ensure you have Go installed on your system. Follow these steps to install Lexido:
