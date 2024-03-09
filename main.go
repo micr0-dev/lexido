@@ -143,6 +143,10 @@ func main() {
 	// Set the default post-prompt
 	pre_prompt += " The user, " + username + ", is currently running " + opperatingSystem + " on " + hostname + " in " + cwd + "."
 
+	// Detect all installed package managers
+	installedManagers := io.DetectPackageManagers()
+	pre_prompt += " The user has the following package managers installed: " + strings.Join(installedManagers, ", ") + "."
+
 	// Call Gemini Pro with the user's prompt
 	model := client.GenerativeModel("gemini-pro")
 	prompt := genai.Text(pre_prompt + "\n User: " + text_prompt)

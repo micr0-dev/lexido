@@ -165,6 +165,42 @@ func ExtractHostnameCtlValue(field string) (string, error) {
 	return strings.TrimSpace(strings.ReplaceAll(data, field+":", "")), nil
 }
 
+// checks if a given package manager is installed by looking for its executable in the system's PATH.
+func IsPackageManagerInstalled(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// returns a list of installed package managers from a predefined list.
+func DetectPackageManagers() []string {
+	var installedManagers []string
+	packageManagers := []string{
+		"apt",          // Debian, Ubuntu
+		"dnf",          // Fedora
+		"yum",          // Older Fedora, CentOS
+		"pacman",       // Arch Linux
+		"brew",         // macOS
+		"port",         // macOS (MacPorts)
+		"zypper",       // openSUSE
+		"emerge",       // Gentoo
+		"xbps-install", // Void Linux
+		"apk",          // Alpine Linux
+		"nix",          // NixOS or multi-distro Nix package manager
+		"snap",         // Snap packages (Ubuntu and others)
+		"flatpak",      // Flatpak (universal package system)
+		"yay",          // AUR helper for Arch Linux
+		"paru",         // Another AUR helper for Arch Linux
+	}
+
+	for _, manager := range packageManagers {
+		if IsPackageManagerInstalled(manager) {
+			installedManagers = append(installedManagers, manager)
+		}
+	}
+
+	return installedManagers
+}
+
 func DisplayHelp() {
 	fmt.Println(`Lexido Command Line Tool Usage:
 
