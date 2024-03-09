@@ -37,21 +37,15 @@ Once downloaded, you'll want to make Lexido easily accessible from anywhere on y
 
 3. **Move the file to your system's path:**
 
-   This lets you run Lexido by just typing its name in the terminal, no matter which folder you're currently in. The exact location for this may differ depending on your operating system:
-
-   * **For macOS:** Move the file to `/usr/local/bin/lexido`
-   * **For other systems (Linux, Unix):** Move the file to a directory like `/bin` or `/usr/bin` (check your system documentation for specifics)
+   **Why do this?** By placing the renamed and executable Lexido file in your system's path, you can run it from any terminal window without needing to specify the full path to the file. It's a shortcut for convenience!
 
    Here's an example command assuming you downloaded Lexido to your Downloads folder:
 
    ```bash
-   mv ~/Downloads/lexido /usr/local/bin/lexido  # macOS
-   mv ~/Downloads/lexido /bin/lexido           # Linux/Unix
+   mv ~/Downloads/lexido /usr/local/bin/lexido
    ```
 
-   **Why do this?** By placing the renamed and executable Lexido file in your system's path, you can run it from any terminal window without needing to specify the full path to the file. It's a shortcut for convenience!
-
-Currently, lexido is not on any package managers but if you would like that to change please contribute!
+    Currently, lexido is not on any package managers but if you would like that to change please contribute!
 
 ### Compile from source
 Ensure you have Go installed on your system. Follow these steps to install Lexido:
