@@ -7,20 +7,21 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/google/generative-ai-go/genai"
+	"github.com/micr0-dev/lexido/pkg/commands"
+	"github.com/micr0-dev/lexido/pkg/io"
 	"github.com/micr0-dev/lexido/pkg/prompt"
+	"github.com/micr0-dev/lexido/pkg/tea"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tearaw "github.com/charmbracelet/bubbletea"
 )
 
-var execCmds []string
+var p *tearaw.Program
 
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
@@ -30,14 +31,20 @@ func main() {
 	flag.Parse()
 
 	if *helpPtr || *hPtr {
-		displayHelp()
+		io.DisplayHelp()
 		os.Exit(0)
 	}
 
 	ctx := context.Background()
 
-	// Access your API key as an environment variable
+	// Access your API key from keyring or environment variable (backwards compatible with previous versions)
 	apiKey := os.Getenv("GOOGLE_AI_KEY")
+
+	if apiKey == "" {
+		apiKey, _ = io.ReadFromKeyring("GOOGLE_AI_KEY")
+	}
+
+	// If no API key is found, prompt the user to enter it
 	if apiKey == "" {
 		fmt.Println("No API key found.")
 		fmt.Println("Please visit https://aistudio.google.com/app/apikey to obtain your API key.")
@@ -47,11 +54,11 @@ func main() {
 		if scanner.Scan() {
 			apiKey = scanner.Text()
 			os.Setenv("GOOGLE_AI_KEY", apiKey)
-			if err := appendToShellConfig("GOOGLE_AI_KEY", apiKey); err != nil {
-				fmt.Println("Failed to automatically append the API key to your shell configuration file. Please add the following line to your .bashrc, .zshrc, or equivalent file manually:")
+			if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
+				fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually:")
 				fmt.Printf("export GOOGLE_AI_KEY='%s'\n", apiKey)
 			} else {
-				fmt.Print("API key set successfully for future sessions. Please restart your terminal or source your profile for the changes to take effect.\n\n")
+				fmt.Print("API key set successfully for future sessions. \n\n")
 			}
 		} else if scanner.Err() != nil {
 			log.Fatalf("Error reading API key: %v", scanner.Err())
@@ -66,7 +73,7 @@ func main() {
 	defer client.Close()
 
 	// Read piped input if present
-	pipedInput, err := readPipedInput()
+	pipedInput, err := io.ReadPipedInput()
 	if err != nil {
 		log.Fatalf("Failed to read piped input: %v", err)
 	}
@@ -75,7 +82,7 @@ func main() {
 
 	if *cPtr {
 		// Read previous conversation from cache if -c is present
-		cachedConversation, err := readConversationCache()
+		cachedConversation, err := io.ReadConversationCache()
 		if err != nil {
 			log.Printf("Warning: Could not read cache. Starting a new conversation. Error: %v", err)
 		}
@@ -114,7 +121,7 @@ func main() {
 	}
 
 	// Detect Operating System (MacOS or Linux)
-	osname, err := runCmd("uname", "-s")
+	osname, err := io.RunCmd("uname", "-s")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,7 +132,7 @@ func main() {
 		opperatingSystem = "macOS"
 	} else {
 		// Get the user's full operating system if not MacOS
-		opperatingSystem, err = extractHostnameCtlValue("Operating System")
+		opperatingSystem, err = io.ExtractHostnameCtlValue("Operating System")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -166,7 +173,9 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	p = tea.NewProgram(initialModel())
+	cmds := new([]string)
+
+	p = tearaw.NewProgram(tea.InitialModel(cmds))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -201,71 +210,20 @@ func main() {
 
 		for _, part := range resp.Candidates[0].Content.Parts {
 			totalresponse += len(fmt.Sprintf("%v", part))
-			p.Send(appendResponseMsg(fmt.Sprintf("%v", part)))
+			p.Send(tea.AppendResponseMsg(fmt.Sprintf("%v", part)))
 
 			responseContent += fmt.Sprintf("%v", part)
 		}
 	}
 
-	p.Send(generationDoneMsg{})
+	p.Send(tea.GenerationDoneMsg{})
 
-	if err := cacheConversation(text_prompt + "\n" + responseContent); err != nil {
+	if err := io.CacheConversation(text_prompt + "\n" + responseContent); err != nil {
 		log.Printf("Warning: Failed to cache conversation. Error: %v", err)
 	}
 
 	wg.Wait()
 
 	// Run the commands
-	runCommands(execCmds)
-}
-
-// Function to parse commands from the response @run[<COMMAND>]
-func parseCommands(responseContent string) []string {
-	// Regular expression to find @run[<COMMAND>]
-	re := regexp.MustCompile(`@run\[(.*?)\]`)
-	matches := re.FindAllStringSubmatch(responseContent, -1)
-
-	var commands []string
-	for _, match := range matches {
-		// Each match is a slice where the first element is the whole match
-		// and the second element is the captured group (the command)
-		if len(match) > 1 {
-			commands = append(commands, match[1]) // Append the command
-		}
-	}
-
-	return commands
-}
-
-// Function to highlight all occurrences of @run[<COMMAND>] in the responseContent
-func highlightCommands(responseContent string) string {
-	// Regular expression to find @run[<COMMAND>]
-	re := regexp.MustCompile(`(@run\[(.*?)\])`)
-
-	// ANSI color codes for highlighting
-	startHighlight := "\033[34m"
-	endHighlight := "\033[0m"
-
-	// Replace matches with highlighted version
-	highlightedContent := re.ReplaceAllStringFunc(responseContent, func(match string) string {
-		return startHighlight + match[5:len(match)-1] + endHighlight
-	})
-
-	return highlightedContent
-}
-
-// Run commands from model
-func runCommands(commands []string) {
-	for _, cmdStr := range commands {
-		parts := strings.Fields(cmdStr)
-		cmd := exec.Command(parts[0], parts[1:]...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		if err := cmd.Run(); err != nil {
-			log.Printf("Error running command %q: %v", cmdStr, err)
-			continue
-		}
-	}
+	commands.RunCommands(*cmds)
 }
