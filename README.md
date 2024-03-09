@@ -29,7 +29,7 @@ Once downloaded, you'll want to make Lexido easily accessible from anywhere on y
 
 2. **Make the file executable:**
 
-   Open your terminal and navigate to the folder where you downloaded the Lexido installer. Then, run the following command to make the file executable:
+   Open your terminal and navigate to the folder where you downloaded the Lexido binary. Then, run the following command to make the file executable:
 
    ```bash
    chmod +x ./lexido
