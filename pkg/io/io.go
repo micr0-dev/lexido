@@ -95,8 +95,13 @@ func SaveToKeyring(field string, val string) error {
 	// Load existing data
 	data := make(map[string]string)
 	file, err := os.ReadFile(filePath)
-	if err == nil {
-		json.Unmarshal(file, &data)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		return err
 	}
 
 	// Update the data with the new value
