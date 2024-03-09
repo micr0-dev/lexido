@@ -20,6 +20,12 @@ Lexido is an innovative assistant for the Linux command line, designed to boost 
 
 ## Installation
 
+### For Arch Linux:
+Lexido is available on the AUR. Install it using the package manager of your choice such as:
+```bash
+yay -S lexido
+```
+### For others and macOS:
 Head to the [releases](https://github.com/micr0-dev/lexido/releases) tab to pick up a binary!
 Once downloaded, you'll want to make Lexido easily accessible from anywhere on your computer. Here's how:
 
