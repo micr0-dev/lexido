@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -190,6 +191,18 @@ func DetectPackageManagers() []string {
 		"flatpak",      // Flatpak (universal package system)
 		"yay",          // AUR helper for Arch Linux
 		"paru",         // Another AUR helper for Arch Linux
+	}
+
+	// Detect Operating System (MacOS or Linux)
+	osname, err := RunCmd("uname", "-s")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Hard coded fix for ghost apt package manager on macOS
+	if strings.Contains(strings.ToLower(osname), "darwin") {
+		packageManagers = packageManagers[1:]
+
 	}
 
 	for _, manager := range packageManagers {
