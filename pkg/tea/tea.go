@@ -17,6 +17,7 @@ const maxWidth = 200
 
 type model struct {
 	spinner                spinner.Model
+	commands               *[]string
 	response               string
 	choices                []string
 	selected               []bool
@@ -33,11 +34,12 @@ type (
 	GenerationDoneMsg struct{}
 )
 
-func InitialModel() model {
+func InitialModel(commmands *[]string) model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return model{
 		spinner:                s,
+		commands:               commmands,
 		response:               "",
 		choices:                make([]string, 0),
 		selected:               make([]bool, 0),
@@ -136,7 +138,7 @@ func (m model) Close(exec bool) (tea.Model, tea.Cmd) {
 	if exec {
 		for i, selected := range m.selected {
 			if selected {
-				commands.ExecCmds = append(commands.ExecCmds, m.choices[i])
+				*m.commands = append(*m.commands, m.choices[i])
 			}
 		}
 		fmt.Print("\n")
