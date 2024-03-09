@@ -1,2 +1,23 @@
-- name: Run golangci-lint
-  uses: golangci/golangci-lint-action@v4.0.0
+name: Run Linter
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go-version: [1.22.0]
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v4.0.0
+            
