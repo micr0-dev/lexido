@@ -1,5 +1,10 @@
 ![lexidoLogo](https://github.com/micr0-dev/lexido/assets/26364458/d19ad5bb-e5d2-416d-9319-408325dc1fb8)
-get things done_
+
+![Badge Build] 
+![Badge Version]
+![Badge License]
+![Badge Language] 
+
 
 ## Introduction
 Lexido is an innovative assistant for the Linux command line, designed to boost your productivity and efficiency. Powered by Gemini Pro 1.0 and utilizing the free API, Lexido offers smart suggestions for commands based on your prompts and importantly **your current environment**. Whether you're installing software, managing files, or configuring system settings, Lexido streamlines the process, making it faster and more intuitive.
@@ -126,3 +131,12 @@ Distributed under the GNU Affero General Public License v3.0. See `LICENSE` for 
 - [Gemini Pro 1.0](https://deepmind.google/technologies/gemini/) for the LLM powering Lexido.
 
 Made with 💚 by Micr0byte
+
+<!----------------------------------{ Badges }--------------------------------->
+
+[Badge Build]: https://github.com/micr0-dev/lexido/actions/workflows/goBuild.yml/badge.svg
+[Badge Issues]: https://img.shields.io/github/issues/micr0-dev/lexido
+[Badge Pull Requests]: https://img.shields.io/github/issues-pr/micr0-dev/lexido
+[Badge Language]: https://img.shields.io/github/languages/top/micr0-dev/lexido
+[Badge License]: https://img.shields.io/github/license/micr0-dev/lexido
+[Badge Version]: https://img.shields.io/github/v/release/micr0-dev/lexido
