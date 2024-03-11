@@ -132,6 +132,10 @@ Distributed under the GNU Affero General Public License v3.0. See `LICENSE` for 
 
 Made with 💚 by Micr0byte
 
+                        
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/micr0-dev/lexido.svg?variant=adaptive)](https://starchart.cc/micr0-dev/lexido)
+
 <!----------------------------------{ Badges }--------------------------------->
 
 [Badge Build]: https://github.com/micr0-dev/lexido/actions/workflows/goBuild.yml/badge.svg
