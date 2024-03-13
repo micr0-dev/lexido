@@ -58,3 +58,13 @@ func RunCommands(commands []string) {
 		}
 	}
 }
+
+// Function to detect if any of the commands are being ran as sudo
+func ContainsSudo(commands []string) bool {
+	for _, cmdStr := range commands {
+		if strings.HasPrefix(cmdStr, "sudo") {
+			return true
+		}
+	}
+	return false
+}
