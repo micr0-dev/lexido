@@ -27,6 +27,7 @@ type model struct {
 	displayedContentLength int
 	commandless            bool
 	isDone                 bool
+	hasSudo                bool
 }
 
 type (
@@ -49,6 +50,7 @@ func InitialModel(commmands *[]string) model {
 		displayedContentLength: 0,
 		commandless:            true,
 		isDone:                 false,
+		hasSudo:                false,
 	}
 }
 
@@ -75,6 +77,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.choices = commands.ParseCommands(m.response)
 		m.selected = make([]bool, len(m.choices)+1)
 		m.commandless = m.choices == nil || len(m.choices) == 0
+		m.hasSudo = commands.ContainsSudo(m.choices)
 	case GenerationDoneMsg:
 		m.isDone = true
 	case tickMsg:
@@ -194,6 +197,10 @@ func (m model) View() string {
 		s.WriteString(">   \033[32m[RUN]\033[0m\n")
 	} else {
 		s.WriteString("    [RUN]\n")
+	}
+
+	if m.hasSudo {
+		s.WriteString(wrap.WrapText("\n\033[31mWarning: This response contains sudo commands. Please thoroughly review the commands before running them.\033[0m\n", min(m.width, maxWidth)))
 	}
 
 	s.WriteString(wrap.WrapText("\nPlease select the tasks to run. q to quit. up/down to select", min(m.width, maxWidth)))
