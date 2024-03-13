@@ -196,13 +196,13 @@ func DetectPackageManagers() []string {
 	// Detect Operating System (MacOS or Linux)
 	osname, err := RunCmd("uname", "-s")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		osname = "Unknown"
 	}
 
 	// Hard coded fix for ghost apt package manager on macOS
 	if strings.Contains(strings.ToLower(osname), "darwin") {
 		packageManagers = packageManagers[1:]
-
 	}
 
 	for _, manager := range packageManagers {
