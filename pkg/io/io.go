@@ -229,5 +229,7 @@ Usage:
     
 Options:
     -h, --help          Display help information
-    -c                  Continue with a previous prompt or add more details to it`)
+    -c                  Continue with a previous prompt or add more details to it
+
+Note: Lexido's outputs may not always be factual. User discretion is advised.`)
 }
