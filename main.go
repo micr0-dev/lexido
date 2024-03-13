@@ -61,21 +61,24 @@ func main() {
 				fmt.Print("API key set successfully for future sessions. \n\n")
 			}
 		} else if scanner.Err() != nil {
-			log.Fatalf("Error reading API key: %v", scanner.Err())
+			log.Printf("Error reading API key: %v\n", scanner.Err())
+			os.Exit(1)
 		}
 	}
 
 	// Set up the GenAI client
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
 	if err != nil {
-		log.Fatalf("Failed to create client: %v", err)
+		log.Printf("Failed to create client: %v\n", err)
+		os.Exit(1)
 	}
 	defer client.Close()
 
 	// Read piped input if present
 	pipedInput, err := io.ReadPipedInput()
 	if err != nil {
-		log.Fatalf("Failed to read piped input: %v", err)
+		log.Printf("Failed to read piped input: %v\n", err)
+		pipedInput = ""
 	}
 
 	var text_prompt string
@@ -84,7 +87,7 @@ func main() {
 		// Read previous conversation from cache if -c is present
 		cachedConversation, err := io.ReadConversationCache()
 		if err != nil {
-			log.Printf("Warning: Could not read cache. Starting a new conversation. Error: %v", err)
+			log.Printf("Warning: Could not read cache. Starting a new conversation. Error: %v\n", err)
 		}
 		text_prompt = cachedConversation + "\n"
 	}
@@ -102,28 +105,33 @@ func main() {
 
 	// Get some information about the user's system
 	// Get the user's username
+	username := "Unknown"
 	userpath, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+	} else {
+		username = userpath[strings.LastIndex(userpath, "/")+1:]
 	}
-	username := userpath[strings.LastIndex(userpath, "/")+1:]
 
 	// Get the user's hostname
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		hostname = "Unknown"
 	}
 
 	// Get the user's current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		cwd = "Unknown"
 	}
 
 	// Detect Operating System (MacOS or Linux)
 	osname, err := io.RunCmd("uname", "-s")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		osname = "Unknown"
 	}
 
 	var opperatingSystem string
@@ -134,7 +142,8 @@ func main() {
 		// Get the user's full operating system if not MacOS
 		opperatingSystem, err = io.ExtractHostnameCtlValue("Operating System")
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			opperatingSystem = "Linux"
 		}
 	}
 
@@ -181,10 +190,14 @@ func main() {
 
 	p = tearaw.NewProgram(tea.InitialModel(cmds))
 	wg.Add(1)
+
+	// Properly close the program if something goes wrong
+	defer p.Quit()
+
 	go func() {
 		defer wg.Done()
 		if _, err := p.Run(); err != nil {
-			log.Printf("Alas, there's been an error: %v", err)
+			log.Printf("Alas, there's been a Bubble Tea error: %v\n", err)
 			os.Exit(1)
 		}
 	}()
@@ -206,10 +219,11 @@ func main() {
 			if strings.Contains(err.Error(), "FinishReasonSafety") {
 				fmt.Println("The content generation was blocked for safety reasons. Please try a different prompt.")
 				fmt.Println(resp.PromptFeedback.BlockReason.String())
-				return // Exit the loop and potentially allow for a new attempt
+				os.Exit(1)
 			}
 
-			log.Fatal(err) // For any other type of error, terminate
+			log.Println(err) // For any other type of error, terminate
+			os.Exit(1)
 		}
 
 		for _, part := range resp.Candidates[0].Content.Parts {
@@ -222,7 +236,8 @@ func main() {
 
 	p.Send(tea.GenerationDoneMsg{})
 
-	if err := io.CacheConversation(text_prompt + "\n" + responseContent); err != nil {
+	err = io.CacheConversation(text_prompt + "\n" + responseContent)
+	if err != nil {
 		log.Printf("Warning: Failed to cache conversation. Error: %v", err)
 	}
 
