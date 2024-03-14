@@ -55,8 +55,8 @@ func main() {
 			apiKey = scanner.Text()
 			os.Setenv("GOOGLE_AI_KEY", apiKey)
 			if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
-				fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually:")
-				fmt.Printf("export GOOGLE_AI_KEY='%s'\n", apiKey)
+				fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually (replace the {API_KEY_HERE} with your API key):")
+				fmt.Println("export GOOGLE_AI_KEY={API_KEY_HERE}")
 			} else {
 				fmt.Print("API key set successfully for future sessions. \n\n")
 			}
