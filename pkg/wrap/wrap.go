@@ -23,6 +23,7 @@ func WrapText(text string, lineWidth int) string {
 
 func WrapParagraph(paragraph string, lineWidth int) string {
 	var result strings.Builder
+	result.Grow(len(paragraph))
 	words := strings.Fields(strings.TrimSpace(paragraph))
 	if len(words) < 1 {
 		return ""
