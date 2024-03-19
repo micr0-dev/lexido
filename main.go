@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"github.com/micr0-dev/lexido/pkg/io"
 	"github.com/micr0-dev/lexido/pkg/prompt"
 	"github.com/micr0-dev/lexido/pkg/tea"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 
@@ -219,6 +221,15 @@ func main() {
 			if strings.Contains(err.Error(), "FinishReasonSafety") {
 				fmt.Println("The content generation was blocked for safety reasons. Please try a different prompt.")
 				fmt.Println(resp.PromptFeedback.BlockReason.String())
+				os.Exit(1)
+			}
+
+			var gerr *googleapi.Error
+			if !errors.As(err, &gerr) {
+				log.Printf("error: %s\n", err)
+				os.Exit(1)
+			} else {
+				log.Printf("error details: %s\n", gerr)
 				os.Exit(1)
 			}
 

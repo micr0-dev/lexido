@@ -24,7 +24,7 @@ func CacheConversation(conversation string) error {
 	}
 
 	// Ensure the .lexido directory exists
-	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	err = ensureDirForFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func ReadConversationCache() (string, error) {
 	}
 
 	// Ensure the .lexido directory exists
-	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	err = ensureDirForFile(filePath)
 	if err != nil {
 		return "", err
 	}
@@ -49,6 +49,10 @@ func ReadConversationCache() (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+func ensureDirForFile(filePath string) error {
+	return os.MkdirAll(filepath.Dir(filePath), 0700)
 }
 
 // Helper function to check and read piped input

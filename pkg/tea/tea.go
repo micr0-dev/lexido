@@ -96,7 +96,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		interval := time.Duration(sleepMs) * time.Millisecond
 
 		return m, tickCmd(interval)
-
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" || msg.String() == "q" || msg.String() == "esc" {
 			return m.Close(false)
@@ -130,7 +129,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
-
 	}
 
 	return m, nil

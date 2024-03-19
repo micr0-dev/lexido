@@ -8,11 +8,12 @@ import (
 	"strings"
 )
 
+// Regular expression to find @run[<COMMAND>]
+var commandRegex = regexp.MustCompile(`@run\[(.*?)\]`)
+
 // Function to parse commands from the response @run[<COMMAND>]
 func ParseCommands(responseContent string) []string {
-	// Regular expression to find @run[<COMMAND>]
-	re := regexp.MustCompile(`@run\[(.*?)\]`)
-	matches := re.FindAllStringSubmatch(responseContent, -1)
+	matches := commandRegex.FindAllStringSubmatch(responseContent, -1)
 
 	var commands []string
 	for _, match := range matches {
@@ -28,15 +29,12 @@ func ParseCommands(responseContent string) []string {
 
 // Function to highlight all occurrences of @run[<COMMAND>] in the responseContent
 func HighlightCommands(responseContent string) string {
-	// Regular expression to find @run[<COMMAND>]
-	re := regexp.MustCompile(`(@run\[(.*?)\])`)
-
 	// ANSI color codes for highlighting
 	startHighlight := "\033[34m"
 	endHighlight := "\033[0m"
 
 	// Replace matches with highlighted version
-	highlightedContent := re.ReplaceAllStringFunc(responseContent, func(match string) string {
+	highlightedContent := commandRegex.ReplaceAllStringFunc(responseContent, func(match string) string {
 		return startHighlight + match[5:len(match)-1] + endHighlight
 	})
 
