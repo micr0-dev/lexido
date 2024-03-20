@@ -25,15 +25,24 @@ import (
 
 var p *tearaw.Program
 
+const version = "1.2.1" // Program version
+
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
 	hPtr := flag.Bool("h", false, "Display help information")
 	cPtr := flag.Bool("c", false, "Continue previous conversation")
+	vPtr := flag.Bool("v", false, "Display version information")
+	versionPtr := flag.Bool("version", false, "Display version information")
 
 	flag.Parse()
 
 	if *helpPtr || *hPtr {
 		io.DisplayHelp()
+		os.Exit(0)
+	}
+
+	if *vPtr || *versionPtr {
+		io.DisplayVersion(version)
 		os.Exit(0)
 	}
 

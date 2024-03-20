@@ -234,6 +234,11 @@ Usage:
 Options:
     -h, --help          Display help information
     -c                  Continue with a previous prompt or add more details to it
+	-v, --version       Display version information
 
 Note: Lexido's outputs may not always be factual. User discretion is advised.`)
+}
+
+func DisplayVersion(version string) {
+	fmt.Println("Lexido Command Line Tool v" + version)
 }
