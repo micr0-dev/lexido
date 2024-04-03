@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,14 +10,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/micr0-dev/lexido/pkg/commands"
 	"github.com/micr0-dev/lexido/pkg/io"
+	gemini "github.com/micr0-dev/lexido/pkg/llms/gemini"
+	"github.com/micr0-dev/lexido/pkg/llms/tgpt"
 	"github.com/micr0-dev/lexido/pkg/prompt"
 	"github.com/micr0-dev/lexido/pkg/tea"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 
 	tearaw "github.com/charmbracelet/bubbletea"
 )
@@ -33,6 +32,7 @@ func main() {
 	cPtr := flag.Bool("c", false, "Continue previous conversation")
 	vPtr := flag.Bool("v", false, "Display version information")
 	versionPtr := flag.Bool("version", false, "Display version information")
+	tPtr := flag.Bool("t", false, "Utilize TGpt instead of Gemini Pro")
 
 	flag.Parse()
 
@@ -46,44 +46,41 @@ func main() {
 		os.Exit(0)
 	}
 
-	ctx := context.Background()
+	isGemini := !*tPtr
 
-	// Access your API key from keyring or environment variable (backwards compatible with previous versions)
-	apiKey := os.Getenv("GOOGLE_AI_KEY")
+	if isGemini {
 
-	if apiKey == "" {
-		apiKey, _ = io.ReadFromKeyring("GOOGLE_AI_KEY")
-	}
+		// Access your API key from keyring or environment variable (backwards compatible with previous versions)
+		apiKey := os.Getenv("GOOGLE_AI_KEY")
 
-	// If no API key is found, prompt the user to enter it
-	if apiKey == "" {
-		fmt.Println("No API key found.")
-		fmt.Println("Please visit https://aistudio.google.com/app/apikey to obtain your API key.")
-		fmt.Print("Enter your API key here: ")
-
-		scanner := bufio.NewScanner(os.Stdin)
-		if scanner.Scan() {
-			apiKey = scanner.Text()
-			os.Setenv("GOOGLE_AI_KEY", apiKey)
-			if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
-				fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually (replace the {API_KEY_HERE} with your API key):")
-				fmt.Println("export GOOGLE_AI_KEY={API_KEY_HERE}")
-			} else {
-				fmt.Print("API key set successfully for future sessions. \n\n")
-			}
-		} else if scanner.Err() != nil {
-			log.Printf("Error reading API key: %v\n", scanner.Err())
-			os.Exit(1)
+		if apiKey == "" {
+			apiKey, _ = io.ReadFromKeyring("GOOGLE_AI_KEY")
 		}
-	}
 
-	// Set up the GenAI client
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
-	if err != nil {
-		log.Printf("Failed to create client: %v\n", err)
-		os.Exit(1)
+		// If no API key is found, prompt the user to enter it
+		if apiKey == "" {
+			fmt.Println("No API key found.")
+			fmt.Println("Please visit https://aistudio.google.com/app/apikey to obtain your API key.")
+			fmt.Print("Enter your API key here: ")
+
+			scanner := bufio.NewScanner(os.Stdin)
+			if scanner.Scan() {
+				apiKey = scanner.Text()
+				os.Setenv("GOOGLE_AI_KEY", apiKey)
+				if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
+					fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually (replace the {API_KEY_HERE} with your API key):")
+					fmt.Println("export GOOGLE_AI_KEY={API_KEY_HERE}")
+				} else {
+					fmt.Print("API key set successfully for future sessions. \n\n")
+				}
+			} else if scanner.Err() != nil {
+				log.Printf("Error reading API key: %v\n", scanner.Err())
+				os.Exit(1)
+			}
+		}
+
+		gemini.Setup(apiKey)
 	}
-	defer client.Close()
 
 	// Read piped input if present
 	pipedInput, err := io.ReadPipedInput()
@@ -166,32 +163,7 @@ func main() {
 	// Detect all installed package managers
 	installedManagers := io.DetectPackageManagers()
 	pre_prompt += " The user has the following package managers installed: " + strings.Join(installedManagers, ", ") + "."
-
-	// Call Gemini Pro with the user's prompt
-	model := client.GenerativeModel("gemini-pro")
-	prompt := genai.Text(pre_prompt + "\n User: " + text_prompt)
-
-	model.SetTemperature(0.7)
-	model.SetTopK(1)
-
-	model.SafetySettings = []*genai.SafetySetting{
-		{
-			Category:  genai.HarmCategoryHarassment,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryHateSpeech,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategorySexuallyExplicit,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryDangerousContent,
-			Threshold: genai.HarmBlockNone,
-		},
-	}
+	str_prompt := pre_prompt + "\n User: " + text_prompt
 
 	// Run the Bubble Tea program
 
@@ -213,45 +185,55 @@ func main() {
 		}
 	}()
 
-	iter := model.GenerateContentStream(ctx, prompt)
-
 	var responseContent string
 	totalresponse := 1
+	if isGemini {
+		iter := gemini.Generate(str_prompt)
+		for {
+			resp, err := iter.Next()
+			if err != nil {
+				if err == iterator.Done {
+					break // End of stream
+				}
+				log.Println("An error occurred:", err)
 
-	for {
-		resp, err := iter.Next()
+				// Check if the error is due to safety filter activation
+				if strings.Contains(err.Error(), "FinishReasonSafety") {
+					fmt.Println("The content generation was blocked for safety reasons. Please try a different prompt.")
+					fmt.Println(resp.PromptFeedback.BlockReason.String())
+					os.Exit(1)
+				}
+
+				var gerr *googleapi.Error
+				if !errors.As(err, &gerr) {
+					log.Printf("error: %s\n", err)
+					os.Exit(1)
+				} else {
+					log.Printf("error details: %s\n", gerr)
+					os.Exit(1)
+				}
+
+				log.Println(err) // For any other type of error, terminate
+				os.Exit(1)
+			}
+
+			for _, part := range resp.Candidates[0].Content.Parts {
+				totalresponse += len(fmt.Sprintf("%v", part))
+				p.Send(tea.AppendResponseMsg(fmt.Sprintf("%v", part)))
+
+				responseContent += fmt.Sprintf("%v", part)
+			}
+		}
+	} else {
+		response, err := tgpt.GenerateWhole(str_prompt)
 		if err != nil {
-			if err == iterator.Done {
-				break // End of stream
-			}
-			log.Println("An error occurred:", err)
-
-			// Check if the error is due to safety filter activation
-			if strings.Contains(err.Error(), "FinishReasonSafety") {
-				fmt.Println("The content generation was blocked for safety reasons. Please try a different prompt.")
-				fmt.Println(resp.PromptFeedback.BlockReason.String())
-				os.Exit(1)
-			}
-
-			var gerr *googleapi.Error
-			if !errors.As(err, &gerr) {
-				log.Printf("error: %s\n", err)
-				os.Exit(1)
-			} else {
-				log.Printf("error details: %s\n", gerr)
-				os.Exit(1)
-			}
-
-			log.Println(err) // For any other type of error, terminate
+			log.Printf("Error generating response: %v\n", err)
 			os.Exit(1)
 		}
+		responseContent += response
+		p.Send(tea.AppendResponseMsg(response))
+		totalresponse += len(response)
 
-		for _, part := range resp.Candidates[0].Content.Parts {
-			totalresponse += len(fmt.Sprintf("%v", part))
-			p.Send(tea.AppendResponseMsg(fmt.Sprintf("%v", part)))
-
-			responseContent += fmt.Sprintf("%v", part)
-		}
 	}
 
 	p.Send(tea.GenerationDoneMsg{})
