@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/micr0-dev/lexido/pkg/commands"
 	"github.com/micr0-dev/lexido/pkg/io"
 	gemini "github.com/micr0-dev/lexido/pkg/llms/gemini"
-	"github.com/micr0-dev/lexido/pkg/llms/tgpt"
+	ollama "github.com/micr0-dev/lexido/pkg/llms/ollama"
 	"github.com/micr0-dev/lexido/pkg/prompt"
 	"github.com/micr0-dev/lexido/pkg/tea"
 	"google.golang.org/api/googleapi"
@@ -32,7 +33,12 @@ func main() {
 	cPtr := flag.Bool("c", false, "Continue previous conversation")
 	vPtr := flag.Bool("v", false, "Display version information")
 	versionPtr := flag.Bool("version", false, "Display version information")
-	tPtr := flag.Bool("t", false, "Utilize TGpt instead of Gemini Pro")
+
+	lPtr := flag.Bool("l", false, "Utilize a local LLM via ollama instead of Gemini Pro")
+	mPtr := flag.String("m", "", "Specify the model to use with ollama, only required if -l is used")
+
+	setMPtr := flag.String("setModel", "", "Set the default model to use with ollama")
+	setLPtr := flag.Bool("setLocal", false, "Toggle the default to use a local LLM via ollama instead of Gemini Pro")
 
 	flag.Parse()
 
@@ -46,7 +52,64 @@ func main() {
 		os.Exit(0)
 	}
 
-	isGemini := !*tPtr
+	_, err := io.ReadFromKeyring("OLLAMA_MODEL")
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
+			if err != nil {
+				log.Printf("Error saving model: %v\n", err)
+				os.Exit(1)
+			}
+		}
+	}
+	if *setMPtr != "" {
+		err := io.SaveToKeyring("OLLAMA_MODEL", *setMPtr)
+		if err != nil {
+			log.Printf("Error saving model: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	local, err := io.ReadFromKeyring("OLLAMA_LOCAL")
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
+			if err != nil {
+				log.Printf("Error saving model: %v\n", err)
+				os.Exit(1)
+			}
+		}
+	}
+	if *setLPtr {
+		isLocal, err := strconv.ParseBool(local)
+		if err != nil {
+			log.Printf("Error reading model: %v\n", err)
+			os.Exit(1)
+		}
+
+		err = io.SaveToKeyring("OLLAMA_LOCAL", strconv.FormatBool(!isLocal))
+		if err != nil {
+			log.Printf("Error saving model: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	local, err = io.ReadFromKeyring("OLLAMA_LOCAL")
+	if err != nil {
+		log.Printf("Error reading model: %v\n", err)
+		os.Exit(1)
+	}
+	isLocal, err := strconv.ParseBool(local)
+	if err != nil {
+		log.Printf("Error reading model: %v\n", err)
+		os.Exit(1)
+	}
+
+	isGemini := true
+
+	if *lPtr || isLocal {
+		isGemini = false
+	}
 
 	if isGemini {
 
@@ -80,8 +143,22 @@ func main() {
 		}
 
 		gemini.Setup(apiKey)
-	}
+	} else {
+		model := *mPtr
+		if *mPtr == "" {
+			model, err = io.ReadFromKeyring("OLLAMA_MODEL")
+			if err != nil {
+				log.Printf("Error reading model: %v\n", err)
+				os.Exit(1)
+			}
+		}
 
+		err := ollama.Init(model)
+		if err != nil {
+			log.Printf("Error initializing ollama: %v\n", err)
+			os.Exit(1)
+		}
+	}
 	// Read piped input if present
 	pipedInput, err := io.ReadPipedInput()
 	if err != nil {
@@ -171,7 +248,7 @@ func main() {
 
 	cmds := new([]string)
 
-	p = tearaw.NewProgram(tea.InitialModel(cmds))
+	p = tearaw.NewProgram(tea.InitialModel(cmds, !isGemini))
 	wg.Add(1)
 
 	// Properly close the program if something goes wrong
@@ -225,7 +302,7 @@ func main() {
 			}
 		}
 	} else {
-		response, err := tgpt.GenerateWhole(str_prompt)
+		response, err := ollama.Generate(str_prompt)
 		if err != nil {
 			log.Printf("Error generating response: %v\n", err)
 			os.Exit(1)
