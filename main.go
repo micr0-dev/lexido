@@ -142,7 +142,11 @@ func main() {
 			}
 		}
 
-		gemini.Setup(apiKey)
+		err = gemini.Setup(apiKey)
+		if err != nil {
+			log.Printf("Error setting up gemini: %v\n", err)
+			os.Exit(1)
+		}
 	} else {
 		model := *mPtr
 		if *mPtr == "" {
