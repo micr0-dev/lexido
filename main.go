@@ -25,7 +25,7 @@ import (
 
 var p *tearaw.Program
 
-const version = "1.2.1" // Program version
+const version = "1.3" // Program version
 
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
@@ -122,6 +122,22 @@ func main() {
 	if err != nil {
 		log.Printf("Error reading model: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Quit without running on setting flags
+	if *setLPtr || *setMPtr != "" {
+		if *setLPtr {
+			if !isLocal {
+				fmt.Println("Default set to use Gemini Pro instead of a local LLM via ollama.")
+			} else {
+				fmt.Println("Default set to use a local LLM via ollama instead of Gemini Pro.")
+			}
+		}
+
+		if *setMPtr != "" {
+			fmt.Printf("Default model set to %s.\n", *setMPtr)
+		}
+		os.Exit(0)
 	}
 
 	isGemini := true
