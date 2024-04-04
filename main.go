@@ -61,6 +61,13 @@ func main() {
 				os.Exit(1)
 			}
 		}
+		if strings.Contains(err.Error(), "no such file or directory") {
+			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
+			if err != nil {
+				log.Printf("Error saving model: %v\n", err)
+				os.Exit(1)
+			}
+		}
 	}
 	if *setMPtr != "" {
 		err := io.SaveToKeyring("OLLAMA_MODEL", *setMPtr)
@@ -73,6 +80,13 @@ func main() {
 	local, err := io.ReadFromKeyring("OLLAMA_LOCAL")
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
+			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
+			if err != nil {
+				log.Printf("Error saving model: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if strings.Contains(err.Error(), "no such file or directory") {
 			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
 			if err != nil {
 				log.Printf("Error saving model: %v\n", err)
