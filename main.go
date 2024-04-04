@@ -57,22 +57,24 @@ func main() {
 		if strings.Contains(err.Error(), "not found") {
 			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
 			if err != nil {
-				log.Printf("Error saving model: %v\n", err)
+				log.Printf("Error saving dmodel: %v\n", err)
 				os.Exit(1)
 			}
-		}
-		if strings.Contains(err.Error(), "no such file or directory") {
+		} else if strings.Contains(err.Error(), "no such file or directory") {
 			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
 			if err != nil {
-				log.Printf("Error saving model: %v\n", err)
+				log.Printf("Error saving fmodel: %v\n", err)
 				os.Exit(1)
 			}
+		} else {
+			log.Printf("Error reading amodel: %v\n", err)
+			os.Exit(1)
 		}
 	}
 	if *setMPtr != "" {
 		err := io.SaveToKeyring("OLLAMA_MODEL", *setMPtr)
 		if err != nil {
-			log.Printf("Error saving model: %v\n", err)
+			log.Printf("Error saving vmodel: %v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -82,28 +84,31 @@ func main() {
 		if strings.Contains(err.Error(), "not found") {
 			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
 			if err != nil {
-				log.Printf("Error saving model: %v\n", err)
+				log.Printf("Error saving local: %v\n", err)
 				os.Exit(1)
 			}
-		}
-		if strings.Contains(err.Error(), "no such file or directory") {
+		} else if strings.Contains(err.Error(), "no such file or directory") {
 			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
 			if err != nil {
-				log.Printf("Error saving model: %v\n", err)
+				log.Printf("Error saving local: %v\n", err)
 				os.Exit(1)
 			}
+		} else {
+			log.Printf("Error reading local: %v\n", err)
+			os.Exit(1)
 		}
+
 	}
 	if *setLPtr {
 		isLocal, err := strconv.ParseBool(local)
 		if err != nil {
-			log.Printf("Error reading model: %v\n", err)
+			log.Printf("Error reading local: %v\n", err)
 			os.Exit(1)
 		}
 
 		err = io.SaveToKeyring("OLLAMA_LOCAL", strconv.FormatBool(!isLocal))
 		if err != nil {
-			log.Printf("Error saving model: %v\n", err)
+			log.Printf("Error saving local: %v\n", err)
 			os.Exit(1)
 		}
 	}

@@ -92,7 +92,7 @@ func SaveToKeyring(field string, val string) error {
 	}
 
 	// Ensure the .lexido directory exists
-	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	err = ensureDirForFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,20 @@ func SaveToKeyring(field string, val string) error {
 	data := make(map[string]string)
 	file, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		// If file does not exist, create it
+		if errors.Is(err, os.ErrNotExist) {
+			emptyData, _ := json.MarshalIndent(data, "", "    ")
+			err = os.WriteFile(filePath, emptyData, 0600)
+			if err != nil {
+				return err
+			}
+			file, err = os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	err = json.Unmarshal(file, &data)
