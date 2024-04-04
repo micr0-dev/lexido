@@ -267,7 +267,6 @@ func main() {
 	}()
 
 	var responseContent string
-	totalresponse := 1
 	if isGemini {
 		iter := gemini.Generate(str_prompt)
 		for {
@@ -299,7 +298,6 @@ func main() {
 			}
 
 			for _, part := range resp.Candidates[0].Content.Parts {
-				totalresponse += len(fmt.Sprintf("%v", part))
 				p.Send(tea.AppendResponseMsg(fmt.Sprintf("%v", part)))
 
 				responseContent += fmt.Sprintf("%v", part)
@@ -313,8 +311,6 @@ func main() {
 		}
 		responseContent += response
 		p.Send(tea.AppendResponseMsg(response))
-		totalresponse += len(response)
-
 	}
 
 	p.Send(tea.GenerationDoneMsg{})
