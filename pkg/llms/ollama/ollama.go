@@ -13,7 +13,7 @@ func Init(model string) error {
 	llmList, err := io.RunCmd("ollama", "list")
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return errors.New("ollama not installed on system, please install it first using the guide on github.com/micr0-dev/lexido")
+			return errors.New("ollama not installed on system, please install it first using the guide on https://github.com/micr0-dev/lexido?tab=readme-ov-file#running-locally")
 		}
 		return err
 	}
