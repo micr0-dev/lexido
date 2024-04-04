@@ -28,6 +28,7 @@ type model struct {
 	commandless            bool
 	isDone                 bool
 	hasSudo                bool
+	isLocal                bool
 }
 
 type (
@@ -35,7 +36,7 @@ type (
 	GenerationDoneMsg struct{}
 )
 
-func InitialModel(commmands *[]string) model {
+func InitialModel(commmands *[]string, local bool) model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return model{
@@ -51,6 +52,7 @@ func InitialModel(commmands *[]string) model {
 		commandless:            true,
 		isDone:                 false,
 		hasSudo:                false,
+		isLocal:                local,
 	}
 }
 
@@ -154,7 +156,11 @@ func (m model) View() string {
 	s.WriteString("\033[0m")
 
 	if m.response == "" {
-		s.WriteString(fmt.Sprintf("%s Initializing...", m.spinner.View()))
+		if m.isLocal {
+			s.WriteString(fmt.Sprintf("%sGenerating...", m.spinner.View()))
+		} else {
+			s.WriteString(fmt.Sprintf("%sConnecting...", m.spinner.View()))
+		}
 		return s.String()
 	}
 

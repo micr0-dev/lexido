@@ -92,7 +92,7 @@ func SaveToKeyring(field string, val string) error {
 	}
 
 	// Ensure the .lexido directory exists
-	err = os.MkdirAll(filepath.Dir(filePath), 0700)
+	err = ensureDirForFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,20 @@ func SaveToKeyring(field string, val string) error {
 	data := make(map[string]string)
 	file, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		// If file does not exist, create it
+		if errors.Is(err, os.ErrNotExist) {
+			emptyData, _ := json.MarshalIndent(data, "", "    ")
+			err = os.WriteFile(filePath, emptyData, 0600)
+			if err != nil {
+				return err
+			}
+			file, err = os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	err = json.Unmarshal(file, &data)
@@ -230,11 +243,18 @@ Usage:
 
     To use with piping commands:
         ls | lexido "what should I do with these files?"
+
+	To run llama2 locally via ollama:
+		lexido -l -m llama2 "install teamspeak via docker"
     
 Options:
     -h, --help          Display help information
     -c                  Continue with a previous prompt or add more details to it
 	-v, --version       Display version information
+	-l 					Temporarily run locally via ollama
+	--setLocal			Toggle if lexido runs locally via ollama by defualt
+	-m					Temporarily run with a model to be used by ollama
+	--setModel 			Set the default model to be used by ollama
 
 Note: Lexido's outputs may not always be factual. User discretion is advised.`)
 }

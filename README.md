@@ -56,8 +56,6 @@ Once downloaded, you'll want to make Lexido easily accessible from anywhere on y
    mv ~/Downloads/lexido /usr/local/bin/lexido
    ```
 
-Currently, lexido is not on any package managers but if you would like that to change please contribute!
-
 ### Compile from source
 Ensure you have Go installed on your system. Follow these steps to install Lexido:
 
@@ -77,6 +75,22 @@ go build
 ```
 
 4. Optionally, move the Lexido binary to a location in your PATH for easy access.
+
+## Running locally
+If you want to run lexido completely locally you can do that as of version 1.3! This is done via [Ollama](https://github.com/ollama/ollama), a tool for easily running large language models locally. It does all the hard work of installing LLMs for you!
+
+You can install [Ollama](https://github.com/ollama/ollama) as follows:
+
+### Linux:
+```
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+### macOS:
+[Download](https://ollama.com/download/Ollama-darwin.zip)
+
+#### After you have installed Ollama
+Running lexido locally is as easy as adding the `-l` flag when you want to run locally, or using `--setLocal` to run locally by default! You can also select the model you want to run with `-m` and again set it to be the default with `--setModel`. Be sure you have the model installed before attempting to run it with lexido however! 
 
 ## Usage
 - To get command suggestions:

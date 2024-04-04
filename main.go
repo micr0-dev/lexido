@@ -2,30 +2,30 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/micr0-dev/lexido/pkg/commands"
 	"github.com/micr0-dev/lexido/pkg/io"
+	gemini "github.com/micr0-dev/lexido/pkg/llms/gemini"
+	ollama "github.com/micr0-dev/lexido/pkg/llms/ollama"
 	"github.com/micr0-dev/lexido/pkg/prompt"
 	"github.com/micr0-dev/lexido/pkg/tea"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 
 	tearaw "github.com/charmbracelet/bubbletea"
 )
 
 var p *tearaw.Program
 
-const version = "1.2.3" // Program version
+const version = "1.3" // Program version
 
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
@@ -33,6 +33,12 @@ func main() {
 	cPtr := flag.Bool("c", false, "Continue previous conversation")
 	vPtr := flag.Bool("v", false, "Display version information")
 	versionPtr := flag.Bool("version", false, "Display version information")
+
+	lPtr := flag.Bool("l", false, "Utilize a local LLM via ollama instead of Gemini Pro")
+	mPtr := flag.String("m", "", "Specify the model to use with ollama, only required if -l is used")
+
+	setMPtr := flag.String("setModel", "", "Set the default model to use with ollama")
+	setLPtr := flag.Bool("setLocal", false, "Toggle the default to use a local LLM via ollama instead of Gemini Pro")
 
 	flag.Parse()
 
@@ -46,45 +52,152 @@ func main() {
 		os.Exit(0)
 	}
 
-	ctx := context.Background()
-
-	// Access your API key from keyring or environment variable (backwards compatible with previous versions)
-	apiKey := os.Getenv("GOOGLE_AI_KEY")
-
-	if apiKey == "" {
-		apiKey, _ = io.ReadFromKeyring("GOOGLE_AI_KEY")
-	}
-
-	// If no API key is found, prompt the user to enter it
-	if apiKey == "" {
-		fmt.Println("No API key found.")
-		fmt.Println("Please visit https://aistudio.google.com/app/apikey to obtain your API key.")
-		fmt.Print("Enter your API key here: ")
-
-		scanner := bufio.NewScanner(os.Stdin)
-		if scanner.Scan() {
-			apiKey = scanner.Text()
-			os.Setenv("GOOGLE_AI_KEY", apiKey)
-			if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
-				fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually (replace the {API_KEY_HERE} with your API key):")
-				fmt.Println("export GOOGLE_AI_KEY={API_KEY_HERE}")
-			} else {
-				fmt.Print("API key set successfully for future sessions. \n\n")
+	_, err := io.ReadFromKeyring("OLLAMA_MODEL")
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
+			if err != nil {
+				log.Printf("Error saving dmodel: %v\n", err)
+				os.Exit(1)
 			}
-		} else if scanner.Err() != nil {
-			log.Printf("Error reading API key: %v\n", scanner.Err())
+		} else if strings.Contains(err.Error(), "no such file or directory") {
+			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
+			if err != nil {
+				log.Printf("Error saving fmodel: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			log.Printf("Error reading amodel: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	if *setMPtr != "" {
+		err := io.SaveToKeyring("OLLAMA_MODEL", *setMPtr)
+		if err != nil {
+			log.Printf("Error saving vmodel: %v\n", err)
 			os.Exit(1)
 		}
 	}
 
-	// Set up the GenAI client
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	local, err := io.ReadFromKeyring("OLLAMA_LOCAL")
 	if err != nil {
-		log.Printf("Failed to create client: %v\n", err)
+		if strings.Contains(err.Error(), "not found") {
+			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
+			if err != nil {
+				log.Printf("Error saving local: %v\n", err)
+				os.Exit(1)
+			}
+		} else if strings.Contains(err.Error(), "no such file or directory") {
+			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
+			if err != nil {
+				log.Printf("Error saving local: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			log.Printf("Error reading local: %v\n", err)
+			os.Exit(1)
+		}
+
+	}
+	if *setLPtr {
+		isLocal, err := strconv.ParseBool(local)
+		if err != nil {
+			log.Printf("Error reading local: %v\n", err)
+			os.Exit(1)
+		}
+
+		err = io.SaveToKeyring("OLLAMA_LOCAL", strconv.FormatBool(!isLocal))
+		if err != nil {
+			log.Printf("Error saving local: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	local, err = io.ReadFromKeyring("OLLAMA_LOCAL")
+	if err != nil {
+		log.Printf("Error reading model: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.Close()
+	isLocal, err := strconv.ParseBool(local)
+	if err != nil {
+		log.Printf("Error reading model: %v\n", err)
+		os.Exit(1)
+	}
 
+	// Quit without running on setting flags
+	if *setLPtr || *setMPtr != "" {
+		if *setLPtr {
+			if !isLocal {
+				fmt.Println("Default set to use Gemini Pro instead of a local LLM via ollama.")
+			} else {
+				fmt.Println("Default set to use a local LLM via ollama instead of Gemini Pro.")
+			}
+		}
+
+		if *setMPtr != "" {
+			fmt.Printf("Default model set to %s.\n", *setMPtr)
+		}
+		os.Exit(0)
+	}
+
+	isGemini := true
+
+	if *lPtr || isLocal {
+		isGemini = false
+	}
+
+	if isGemini {
+
+		// Access your API key from keyring or environment variable (backwards compatible with previous versions)
+		apiKey := os.Getenv("GOOGLE_AI_KEY")
+
+		if apiKey == "" {
+			apiKey, _ = io.ReadFromKeyring("GOOGLE_AI_KEY")
+		}
+
+		// If no API key is found, prompt the user to enter it
+		if apiKey == "" {
+			fmt.Println("No API key found.")
+			fmt.Println("Please visit https://aistudio.google.com/app/apikey to obtain your API key.")
+			fmt.Print("Enter your API key here: ")
+
+			scanner := bufio.NewScanner(os.Stdin)
+			if scanner.Scan() {
+				apiKey = scanner.Text()
+				os.Setenv("GOOGLE_AI_KEY", apiKey)
+				if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
+					fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually (replace the {API_KEY_HERE} with your API key):")
+					fmt.Println("export GOOGLE_AI_KEY={API_KEY_HERE}")
+				} else {
+					fmt.Print("API key set successfully for future sessions. \n\n")
+				}
+			} else if scanner.Err() != nil {
+				log.Printf("Error reading API key: %v\n", scanner.Err())
+				os.Exit(1)
+			}
+		}
+
+		err = gemini.Setup(apiKey)
+		if err != nil {
+			log.Printf("Error setting up gemini: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		model := *mPtr
+		if *mPtr == "" {
+			model, err = io.ReadFromKeyring("OLLAMA_MODEL")
+			if err != nil {
+				log.Printf("Error reading model: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		err := ollama.Init(model)
+		if err != nil {
+			log.Printf("Error initializing ollama: %v\n", err)
+			os.Exit(1)
+		}
+	}
 	// Read piped input if present
 	pipedInput, err := io.ReadPipedInput()
 	if err != nil {
@@ -166,32 +279,7 @@ func main() {
 	// Detect all installed package managers
 	installedManagers := io.DetectPackageManagers()
 	pre_prompt += " The user has the following package managers installed: " + strings.Join(installedManagers, ", ") + "."
-
-	// Call Gemini Pro with the user's prompt
-	model := client.GenerativeModel("gemini-pro")
-	prompt := genai.Text(pre_prompt + "\n User: " + text_prompt)
-
-	model.SetTemperature(0.7)
-	model.SetTopK(1)
-
-	model.SafetySettings = []*genai.SafetySetting{
-		{
-			Category:  genai.HarmCategoryHarassment,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryHateSpeech,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategorySexuallyExplicit,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryDangerousContent,
-			Threshold: genai.HarmBlockNone,
-		},
-	}
+	str_prompt := pre_prompt + "\n User: " + text_prompt
 
 	// Run the Bubble Tea program
 
@@ -199,7 +287,7 @@ func main() {
 
 	cmds := new([]string)
 
-	p = tearaw.NewProgram(tea.InitialModel(cmds))
+	p = tearaw.NewProgram(tea.InitialModel(cmds, !isGemini))
 	wg.Add(1)
 
 	// Properly close the program if something goes wrong
@@ -213,45 +301,51 @@ func main() {
 		}
 	}()
 
-	iter := model.GenerateContentStream(ctx, prompt)
-
 	var responseContent string
-	totalresponse := 1
+	if isGemini {
+		iter := gemini.Generate(str_prompt)
+		for {
+			resp, err := iter.Next()
+			if err != nil {
+				if err == iterator.Done {
+					break // End of stream
+				}
+				log.Println("An error occurred:", err)
 
-	for {
-		resp, err := iter.Next()
+				// Check if the error is due to safety filter activation
+				if strings.Contains(err.Error(), "FinishReasonSafety") {
+					fmt.Println("The content generation was blocked for safety reasons. Please try a different prompt.")
+					fmt.Println(resp.PromptFeedback.BlockReason.String())
+					os.Exit(1)
+				}
+
+				var gerr *googleapi.Error
+				if !errors.As(err, &gerr) {
+					log.Printf("error: %s\n", err)
+					os.Exit(1)
+				} else {
+					log.Printf("error details: %s\n", gerr)
+					os.Exit(1)
+				}
+
+				log.Println(err) // For any other type of error, terminate
+				os.Exit(1)
+			}
+
+			for _, part := range resp.Candidates[0].Content.Parts {
+				p.Send(tea.AppendResponseMsg(fmt.Sprintf("%v", part)))
+
+				responseContent += fmt.Sprintf("%v", part)
+			}
+		}
+	} else {
+		response, err := ollama.Generate(str_prompt)
 		if err != nil {
-			if err == iterator.Done {
-				break // End of stream
-			}
-			log.Println("An error occurred:", err)
-
-			// Check if the error is due to safety filter activation
-			if strings.Contains(err.Error(), "FinishReasonSafety") {
-				fmt.Println("The content generation was blocked for safety reasons. Please try a different prompt.")
-				fmt.Println(resp.PromptFeedback.BlockReason.String())
-				os.Exit(1)
-			}
-
-			var gerr *googleapi.Error
-			if !errors.As(err, &gerr) {
-				log.Printf("error: %s\n", err)
-				os.Exit(1)
-			} else {
-				log.Printf("error details: %s\n", gerr)
-				os.Exit(1)
-			}
-
-			log.Println(err) // For any other type of error, terminate
+			log.Printf("Error generating response: %v\n", err)
 			os.Exit(1)
 		}
-
-		for _, part := range resp.Candidates[0].Content.Parts {
-			totalresponse += len(fmt.Sprintf("%v", part))
-			p.Send(tea.AppendResponseMsg(fmt.Sprintf("%v", part)))
-
-			responseContent += fmt.Sprintf("%v", part)
-		}
+		responseContent += response
+		p.Send(tea.AppendResponseMsg(response))
 	}
 
 	p.Send(tea.GenerationDoneMsg{})
