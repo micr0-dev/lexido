@@ -89,7 +89,9 @@ curl -fsSL https://ollama.com/install.sh | sh
 ### macOS:
 [Download](https://ollama.com/download/Ollama-darwin.zip)
 
-After you have installed Ollama running lexido locally is as easy as adding the `-l` flag when you want to run locally, or using `--setLocal` to run locally by default! You can also select the model you want to run with `-m` and again set it to be the default with `--setModel`. Be sure you have the model installed before attempting to run it with lexido however! 
+#### After you have installed Ollama
+Running lexido locally is as easy as adding the `-l` flag when you want to run locally, or using `--setLocal` to run locally by default! You can also select the model you want to run with `-m` and again set it to be the default with `--setModel`. Be sure you have the model installed before attempting to run it with lexido however! 
+
 ## Usage
 - To get command suggestions:
 ```bash
