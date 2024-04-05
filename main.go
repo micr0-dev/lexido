@@ -216,7 +216,7 @@ func main() {
 		text_prompt = cachedConversation + "\n"
 	}
 
-	text_prompt += strings.Join(os.Args[1:], " ")
+	text_prompt += strings.Join(flag.Args(), " ")
 
 	if text_prompt == "" {
 		text_prompt = "The user did not provide a prompt."
