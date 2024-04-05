@@ -157,7 +157,7 @@ func (m model) View() string {
 
 	if m.response == "" {
 		if m.isLocal {
-			s.WriteString(fmt.Sprintf("%sGenerating...", m.spinner.View()))
+			s.WriteString(fmt.Sprintf("%sInitializing...", m.spinner.View()))
 		} else {
 			s.WriteString(fmt.Sprintf("%sConnecting...", m.spinner.View()))
 		}
