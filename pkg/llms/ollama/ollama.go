@@ -12,6 +12,8 @@ import (
 
 var llmModel string
 
+var EOFThreshold = 50
+
 func Init(model string) error {
 	llmList, err := io.RunCmd("ollama", "list")
 	if err != nil {
@@ -53,17 +55,21 @@ func GenerateContentStream(str_prompt string) (<-chan string, error) {
 	go func() {
 		defer close(outputChan)
 
+		EOFCount := 0
+
 		// Use bufio.NewReader to read the output line by line.
 		reader := bufio.NewReader(stdout)
 		for {
 			line, err := reader.ReadString(' ')
 			if err != nil {
 				if strings.Contains(err.Error(), "EOF") {
-					fmt.Printf("error reading stdout: %v\n", err)
+					EOFCount++
 				}
-				break
-			}
 
+				if EOFCount > EOFThreshold {
+					break
+				}
+			}
 			// Send the line to the channel.
 			outputChan <- line
 		}
