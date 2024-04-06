@@ -26,3 +26,6 @@ main
 
 # Build directory
 build/
+
+# MacOs bloat stuff
+.DS_Store
