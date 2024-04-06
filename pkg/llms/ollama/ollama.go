@@ -1,13 +1,18 @@
 package ollama
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"os/exec"
 	"strings"
 
 	"github.com/micr0-dev/lexido/pkg/io"
 )
 
 var llmModel string
+
+var EOFThreshold = 50
 
 func Init(model string) error {
 	llmList, err := io.RunCmd("ollama", "list")
@@ -28,6 +33,52 @@ func Init(model string) error {
 	return nil
 }
 
-func Generate(str_prompt string) (string, error) {
-	return io.RunCmd("ollama", "run", llmModel, "\""+str_prompt+"\"")
+func GenerateContentStream(str_prompt string) (<-chan string, error) {
+	// Create a command. Replace "ollama", "run", llmModel with your actual command and arguments.
+	cmd := exec.Command("ollama", "run", llmModel, "\""+str_prompt+"\"")
+
+	// Get the command's standard output pipe.
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	// Start the command.
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start command: %w", err)
+	}
+
+	// Create a channel to send the output.
+	outputChan := make(chan string)
+
+	// Go routine to read command's standard output.
+	go func() {
+		defer close(outputChan)
+
+		EOFCount := 0
+
+		// Use bufio.NewReader to read the output line by line.
+		reader := bufio.NewReader(stdout)
+		for {
+			line, err := reader.ReadString(' ')
+			if err != nil {
+				if strings.Contains(err.Error(), "EOF") {
+					EOFCount++
+				}
+
+				if EOFCount > EOFThreshold {
+					break
+				}
+			}
+			// Send the line to the channel.
+			outputChan <- line
+		}
+
+		// Wait for the command to finish.
+		if err := cmd.Wait(); err != nil {
+			fmt.Printf("command finished with error: %v\n", err)
+		}
+	}()
+
+	return outputChan, nil
 }

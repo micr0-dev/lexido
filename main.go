@@ -25,7 +25,7 @@ import (
 
 var p *tearaw.Program
 
-const version = "1.3" // Program version
+const version = "1.3.1" // Program version
 
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
@@ -339,13 +339,17 @@ func main() {
 			}
 		}
 	} else {
-		response, err := ollama.Generate(str_prompt)
+		outputChan, err := ollama.GenerateContentStream(str_prompt)
 		if err != nil {
-			log.Printf("Error generating response: %v\n", err)
-			os.Exit(1)
+			fmt.Printf("Error: %v\n", err)
+			return
 		}
-		responseContent += response
-		p.Send(tea.AppendResponseMsg(response))
+
+		for line := range outputChan {
+			responseContent += line
+			p.Send(tea.AppendResponseMsg(line))
+		}
+
 	}
 
 	p.Send(tea.GenerationDoneMsg{})
