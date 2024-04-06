@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/micr0-dev/lexido/pkg/commands"
-	"github.com/micr0-dev/lexido/pkg/wrap"
+	"github.com/micr0-dev/lexido/pkg/format"
 )
 
 const maxWidth = 200
@@ -164,12 +164,12 @@ func (m model) View() string {
 		return s.String()
 	}
 
-	displayContent := m.response
+	displayContent := format.TrimWhitespace(m.response)
 	if len(displayContent) > m.displayedContentLength {
 		displayContent = displayContent[:m.displayedContentLength]
 	}
 
-	wrappedResponse := wrap.WrapText(commands.HighlightCommands(displayContent), min(m.width, maxWidth))
+	wrappedResponse := format.WrapText(commands.HighlightCommands(displayContent), min(m.width, maxWidth))
 	s.WriteString(wrappedResponse)
 
 	if m.commandless {
@@ -204,10 +204,10 @@ func (m model) View() string {
 	}
 
 	if m.hasSudo {
-		s.WriteString(wrap.WrapText("\n\033[31mWarning: This response contains sudo commands. Please thoroughly review the commands before running them.\033[0m\n", min(m.width, maxWidth)))
+		s.WriteString(format.WrapText("\n\033[31mWarning: This response contains sudo commands. Please thoroughly review the commands before running them.\033[0m\n", min(m.width, maxWidth)))
 	}
 
-	s.WriteString(wrap.WrapText("\nPlease select the tasks to run. q to quit. up/down to select", min(m.width, maxWidth)))
+	s.WriteString(format.WrapText("\nPlease select the tasks to run. q to quit. up/down to select", min(m.width, maxWidth)))
 
 	return s.String()
 }

@@ -1,4 +1,4 @@
-package wrap
+package format
 
 import "strings"
 
@@ -40,4 +40,8 @@ func WrapParagraph(paragraph string, lineWidth int) string {
 		}
 	}
 	return result.String()
+}
+
+func TrimWhitespace(text string) string {
+	return strings.TrimSpace(text)
 }
