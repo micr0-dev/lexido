@@ -139,7 +139,7 @@ Contributions are what make the open-source community such an amazing place to l
 5. Open a Pull Request
 
 ## License
-Distributed under the GNU Affero General Public License v3.0. See `LICENSE` for more information.
+Distributed under the GNU Affero General Public License v3.0 or any later version. See `LICENSE` for more information.
 
 ## Acknowledgements
 - [Gemini Pro 1.0](https://deepmind.google/technologies/gemini/) for the LLM powering Lexido.
