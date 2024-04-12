@@ -138,6 +138,10 @@ Contributions are what make the open-source community such an amazing place to l
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## ☕ Buy me a coffee
+If you use and enjoy lexido, you can buy me a coffee as a thank you!
+https://ko-fi.com/micr0byte
+
 ## License
 Distributed under the GNU Affero General Public License v3.0 or any later version. See `LICENSE` for more information.
 
