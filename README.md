@@ -142,6 +142,8 @@ Contributions are what make the open-source community such an amazing place to l
 If you use and enjoy lexido, you can buy me a coffee as a thank you!
 https://ko-fi.com/micr0byte
 
+<a href='https://ko-fi.com/J3J745R96' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+
 ## License
 Distributed under the GNU Affero General Public License v3.0 or any later version. See `LICENSE` for more information.
 
