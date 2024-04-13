@@ -30,7 +30,14 @@ Lexido is available on the AUR. Install it using the package manager of your cho
 ```bash
 yay -S lexido
 ```
-### For others and macOS:
+
+### For macOS:
+Lexido is available on homebrew. Install it using the `brew` command:
+```bash
+brew install lexido
+```
+
+### For others:
 Head to the [releases](https://github.com/micr0-dev/lexido/releases) tab to pick up a binary!
 Once downloaded, you'll want to make Lexido easily accessible from anywhere on your computer. Here's how:
 
