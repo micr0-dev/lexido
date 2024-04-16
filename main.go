@@ -164,6 +164,17 @@ func main() {
 			scanner := bufio.NewScanner(os.Stdin)
 			if scanner.Scan() {
 				apiKey = scanner.Text()
+
+				// Check if the API key is valid
+				isValid, err := gemini.IsKeyValid(apiKey)
+				if !isValid {
+					fmt.Println("Invalid API key. Please try again.")
+					os.Exit(1)
+				} else if err != nil {
+					log.Printf("Error validating API key: %v\n", err)
+					os.Exit(1)
+				}
+
 				os.Setenv("GOOGLE_AI_KEY", apiKey)
 				if err := io.SaveToKeyring("GOOGLE_AI_KEY", apiKey); err != nil {
 					fmt.Println("Failed to automatically append the API key to keyring. Please add the following line to your .bashrc, .zshrc, or equivalent file manually (replace the {API_KEY_HERE} with your API key):")

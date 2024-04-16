@@ -2,6 +2,8 @@ package gemini
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
@@ -9,6 +11,25 @@ import (
 
 var model *genai.GenerativeModel
 var ctx context.Context
+
+func IsKeyValid(apiKey string) (bool, error) {
+	if Setup(apiKey) != nil {
+		return false, nil
+	}
+
+	prompt := genai.Text("Say Hello World!")
+	_, err := model.GenerateContent(ctx, prompt)
+
+	if err != nil {
+		// Check if the error contains invalid API key (Error 400)
+		if strings.Contains(err.Error(), "Error 400") {
+			return false, nil
+		}
+		return false, errors.New("Error setting up GenAI client: " + err.Error())
+	}
+
+	return true, nil
+}
 
 func Setup(apiKey string) error {
 	ctx = context.Background()
