@@ -15,6 +15,7 @@ import (
 	"github.com/micr0-dev/lexido/pkg/io"
 	gemini "github.com/micr0-dev/lexido/pkg/llms/gemini"
 	ollama "github.com/micr0-dev/lexido/pkg/llms/ollama"
+	"github.com/micr0-dev/lexido/pkg/llms/remote"
 	"github.com/micr0-dev/lexido/pkg/prompt"
 	"github.com/micr0-dev/lexido/pkg/tea"
 	"google.golang.org/api/googleapi"
@@ -36,6 +37,8 @@ func main() {
 
 	lPtr := flag.Bool("l", false, "Utilize a local LLM via ollama instead of Gemini Pro")
 	mPtr := flag.String("m", "", "Specify the model to use with ollama, only required if -l is used")
+
+	rPtr := flag.Bool("r", false, "Utilize a remote REST Api LLM as per the configuration file")
 
 	setMPtr := flag.String("setModel", "", "Set the default model to use with ollama")
 	setLPtr := flag.Bool("setLocal", false, "Toggle the default to use a local LLM via ollama instead of Gemini Pro")
@@ -142,7 +145,7 @@ func main() {
 
 	isGemini := true
 
-	if *lPtr || isLocal {
+	if *lPtr || isLocal || *rPtr {
 		isGemini = false
 	}
 
@@ -193,7 +196,7 @@ func main() {
 			log.Printf("Error setting up gemini: %v\n", err)
 			os.Exit(1)
 		}
-	} else {
+	} else if !*rPtr {
 		model := *mPtr
 		if *mPtr == "" {
 			model, err = io.ReadFromKeyring("OLLAMA_MODEL")
@@ -349,7 +352,7 @@ func main() {
 				responseContent += fmt.Sprintf("%v", part)
 			}
 		}
-	} else {
+	} else if !*rPtr {
 		outputChan, err := ollama.GenerateContentStream(str_prompt)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -360,6 +363,18 @@ func main() {
 			responseContent += line
 			p.Send(tea.AppendResponseMsg(line))
 		}
+
+	} else {
+		responseContent, err = remote.Generate(str_prompt)
+		if err != nil {
+			if strings.Contains(err.Error(), "file not found") {
+				log.Println(err.Error())
+				os.Exit(1)
+			}
+			log.Printf("Error generating content remotely: %v\n", err)
+			os.Exit(1)
+		}
+		p.Send(tea.AppendResponseMsg(responseContent))
 
 	}
 

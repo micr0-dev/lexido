@@ -2,6 +2,8 @@ package remote
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -32,6 +34,7 @@ type Config struct {
 		URL          string            `json:"url"`
 		Headers      map[string]string `json:"headers"`
 		DataTemplate interface{}       `json:"data_template"`
+		FieldOutput  string            `json:"field_to_extract"`
 	} `json:"api_config"`
 }
 
@@ -65,10 +68,11 @@ func LoadConfig() (Config, error) {
 	configFile, err := os.ReadFile(filepath)
 	if err != nil {
 		// Create a default configuration file if it doesn't exist
-		if err := os.WriteFile(filepath, []byte(defaultConfig), 0644); err != nil {
+		err := os.WriteFile(filepath, []byte(defaultConfig), 0644)
+		if err != nil {
 			return Config{}, err
 		}
-		return Config{}, err
+		return Config{}, errors.New("A remote configuration file not found. A default configuration file has been created at " + filepath)
 	}
 
 	var config Config
@@ -77,6 +81,46 @@ func LoadConfig() (Config, error) {
 	}
 
 	return config, nil
+}
+
+// ExtractOutput initiates the extraction process by unmarshaling the JSON response and calling findField recursively.
+func ExtractOutput(response []byte, field string) string {
+	var output map[string]interface{}
+	if err := json.Unmarshal(response, &output); err != nil {
+		log.Fatal(err)
+	}
+	return findField(output, field)
+}
+
+// findField recursively searches for the field within the nested JSON structure.
+func findField(data interface{}, field string) string {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		// If the field exists at this level, return it.
+		if value, exists := v[field]; exists {
+			// Convert the value to a string, if possible.
+			if strValue, ok := value.(string); ok {
+				return strValue
+			}
+			// If it's not a string but a nested structure, you might want to handle it differently or return an indication of its type.
+			return fmt.Sprintf("Found, but not a string: %T", value)
+		}
+		// Otherwise, search recursively in each value.
+		for _, value := range v {
+			if found := findField(value, field); found != "" {
+				return found
+			}
+		}
+	case []interface{}:
+		// Search each element in the array.
+		for _, item := range v {
+			if found := findField(item, field); found != "" {
+				return found
+			}
+		}
+	}
+	// Return an empty string if the field is not found.
+	return ""
 }
 
 // Generate sends a POST request to the API endpoint with the prompt and returns the response
@@ -115,5 +159,5 @@ func Generate(prompt string) (string, error) {
 		log.Fatal(err)
 	}
 
-	return string(responseBody), nil
+	return ExtractOutput(responseBody, config.ApiConfig.FieldOutput), nil
 }
