@@ -24,7 +24,8 @@ const defaultConfig = `{
 	  "data_template": {
 		"model": "example-model",
 		"messages": "<PROMPT>"
-	  }
+	  },
+	  "field_to_extract": "response" 
 	}
   }`
 
