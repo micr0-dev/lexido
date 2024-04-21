@@ -148,7 +148,7 @@ Below is an example configuration specifically set up for interacting with the o
       "Accept": "application/json"
     },
     "data_template": {
-      "model": "llama2",
+      "model": "llama3",
       "prompt": "<PROMPT>"
     },
     "field_to_extract": "response"
