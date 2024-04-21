@@ -26,7 +26,7 @@ import (
 
 var p *tearaw.Program
 
-const version = "1.3.1" // Program version
+const version = "1.4" // Program version
 
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
