@@ -62,7 +62,11 @@ func main() {
 			fmt.Println("Invalid default mode. Please use 'gemini', 'local', or 'remote'.")
 			os.Exit(1)
 		} else {
-			io.SaveToKeyring("MODE_DEFAULT", *setDPtr)
+			err := io.SaveToKeyring("MODE_DEFAULT", *setDPtr)
+			if err != nil {
+				log.Printf("Error saving default mode: %v\n", err)
+				os.Exit(1)
+			}
 			fmt.Printf("Default mode set to %s.\n", *setDPtr)
 			os.Exit(0)
 		}
