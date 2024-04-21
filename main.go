@@ -58,13 +58,13 @@ func main() {
 	_, err := io.ReadFromKeyring("OLLAMA_MODEL")
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
+			err = io.SaveToKeyring("OLLAMA_MODEL", "llama3")
 			if err != nil {
 				log.Printf("Error saving dmodel: %v\n", err)
 				os.Exit(1)
 			}
 		} else if strings.Contains(err.Error(), "no such file or directory") {
-			err = io.SaveToKeyring("OLLAMA_MODEL", "llama2")
+			err = io.SaveToKeyring("OLLAMA_MODEL", "llama3")
 			if err != nil {
 				log.Printf("Error saving fmodel: %v\n", err)
 				os.Exit(1)
