@@ -26,7 +26,7 @@ import (
 
 var p *tearaw.Program
 
-const version = "1.3.1" // Program version
+const version = "1.4" // Program version
 
 func main() {
 	helpPtr := flag.Bool("help", false, "Display help information")
@@ -35,13 +35,15 @@ func main() {
 	vPtr := flag.Bool("v", false, "Display version information")
 	versionPtr := flag.Bool("version", false, "Display version information")
 
-	lPtr := flag.Bool("l", false, "Utilize a local LLM via ollama instead of Gemini Pro")
+	gPtr := flag.Bool("g", false, "Utilize Gemini LLM")
+
+	lPtr := flag.Bool("l", false, "Utilize a local LLM via ollama")
 	mPtr := flag.String("m", "", "Specify the model to use with ollama, only required if -l is used")
 
 	rPtr := flag.Bool("r", false, "Utilize a remote REST Api LLM as per the configuration file")
 
 	setMPtr := flag.String("setModel", "", "Set the default model to use with ollama")
-	setLPtr := flag.Bool("setLocal", false, "Toggle the default to use a local LLM via ollama instead of Gemini Pro")
+	setDPtr := flag.String("setDefault", "", "Set the default mode for lexido (gemini/local/remote)")
 
 	flag.Parse()
 
@@ -55,101 +57,105 @@ func main() {
 		os.Exit(0)
 	}
 
-	_, err := io.ReadFromKeyring("OLLAMA_MODEL")
+	if *setDPtr != "" {
+		if *setDPtr != "gemini" && *setDPtr != "local" && *setDPtr != "remote" {
+			fmt.Println("Invalid default mode. Please use 'gemini', 'local', or 'remote'.")
+			os.Exit(1)
+		} else {
+			err := io.SaveToKeyring("MODE_DEFAULT", *setDPtr)
+			if err != nil {
+				log.Printf("Error saving default mode: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Default mode set to %s.\n", *setDPtr)
+			os.Exit(0)
+		}
+	}
+
+	runMode, err := io.ReadFromKeyring("MODE_DEFAULT")
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			// Check for deprecated ollama local
+			wasLocal := false
+			ollamaLocal, err := io.ReadFromKeyring("OLLAMA_LOCAL")
+
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					wasLocal = false
+				} else if strings.Contains(err.Error(), "no such file or directory") {
+					wasLocal = false
+				} else {
+					log.Printf("Error reading local: %v\n", err)
+					os.Exit(1)
+				}
+			} else {
+				wasLocal, err = strconv.ParseBool(ollamaLocal)
+				if err != nil {
+					log.Printf("Error reading local: %v\n", err)
+					os.Exit(1)
+				}
+			}
+
+			if wasLocal {
+				err = io.SaveToKeyring("MODE_DEFAULT", "local")
+				runMode = "local"
+			} else {
+				err = io.SaveToKeyring("MODE_DEFAULT", "gemini")
+				runMode = "gemini"
+			}
+			if err != nil {
+				log.Printf("Error saving model: %v\n", err)
+				os.Exit(1)
+			}
+		} else if strings.Contains(err.Error(), "no such file or directory") {
+			err = io.SaveToKeyring("MODE_DEFAULT", "gemini")
+			runMode = "gemini"
+			if err != nil {
+				log.Printf("Error saving mode: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			log.Printf("Error reading mode: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if *lPtr {
+		runMode = "local"
+	} else if *rPtr {
+		runMode = "remote"
+	} else if *gPtr {
+		runMode = "gemini"
+	}
+
+	_, err = io.ReadFromKeyring("OLLAMA_MODEL")
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			err = io.SaveToKeyring("OLLAMA_MODEL", "llama3")
 			if err != nil {
-				log.Printf("Error saving dmodel: %v\n", err)
+				log.Printf("Error saving model: %v\n", err)
 				os.Exit(1)
 			}
 		} else if strings.Contains(err.Error(), "no such file or directory") {
 			err = io.SaveToKeyring("OLLAMA_MODEL", "llama3")
 			if err != nil {
-				log.Printf("Error saving fmodel: %v\n", err)
+				log.Printf("Error saving model: %v\n", err)
 				os.Exit(1)
 			}
 		} else {
-			log.Printf("Error reading amodel: %v\n", err)
+			log.Printf("Error reading model: %v\n", err)
 			os.Exit(1)
 		}
 	}
 	if *setMPtr != "" {
 		err := io.SaveToKeyring("OLLAMA_MODEL", *setMPtr)
 		if err != nil {
-			log.Printf("Error saving vmodel: %v\n", err)
+			log.Printf("Error saving model: %v\n", err)
 			os.Exit(1)
 		}
 	}
 
-	local, err := io.ReadFromKeyring("OLLAMA_LOCAL")
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
-			if err != nil {
-				log.Printf("Error saving local: %v\n", err)
-				os.Exit(1)
-			}
-		} else if strings.Contains(err.Error(), "no such file or directory") {
-			err = io.SaveToKeyring("OLLAMA_LOCAL", "false")
-			if err != nil {
-				log.Printf("Error saving local: %v\n", err)
-				os.Exit(1)
-			}
-		} else {
-			log.Printf("Error reading local: %v\n", err)
-			os.Exit(1)
-		}
-
-	}
-	if *setLPtr {
-		isLocal, err := strconv.ParseBool(local)
-		if err != nil {
-			log.Printf("Error reading local: %v\n", err)
-			os.Exit(1)
-		}
-
-		err = io.SaveToKeyring("OLLAMA_LOCAL", strconv.FormatBool(!isLocal))
-		if err != nil {
-			log.Printf("Error saving local: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	local, err = io.ReadFromKeyring("OLLAMA_LOCAL")
-	if err != nil {
-		log.Printf("Error reading model: %v\n", err)
-		os.Exit(1)
-	}
-	isLocal, err := strconv.ParseBool(local)
-	if err != nil {
-		log.Printf("Error reading model: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Quit without running on setting flags
-	if *setLPtr || *setMPtr != "" {
-		if *setLPtr {
-			if !isLocal {
-				fmt.Println("Default set to use Gemini Pro instead of a local LLM via ollama.")
-			} else {
-				fmt.Println("Default set to use a local LLM via ollama instead of Gemini Pro.")
-			}
-		}
-
-		if *setMPtr != "" {
-			fmt.Printf("Default model set to %s.\n", *setMPtr)
-		}
-		os.Exit(0)
-	}
-
-	isGemini := true
-
-	if *lPtr || isLocal || *rPtr {
-		isGemini = false
-	}
-
-	if isGemini {
+	if runMode == "gemini" {
 
 		// Access your API key from keyring or environment variable (backwards compatible with previous versions)
 		apiKey := os.Getenv("GOOGLE_AI_KEY")
@@ -196,7 +202,7 @@ func main() {
 			log.Printf("Error setting up gemini: %v\n", err)
 			os.Exit(1)
 		}
-	} else if !*rPtr {
+	} else if runMode == "local" {
 		model := *mPtr
 		if *mPtr == "" {
 			model, err = io.ReadFromKeyring("OLLAMA_MODEL")
@@ -212,6 +218,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
 	// Read piped input if present
 	pipedInput, err := io.ReadPipedInput()
 	if err != nil {
@@ -301,7 +308,7 @@ func main() {
 
 	cmds := new([]string)
 
-	p = tearaw.NewProgram(tea.InitialModel(cmds, !isGemini))
+	p = tearaw.NewProgram(tea.InitialModel(cmds, runMode == "local"))
 	wg.Add(1)
 
 	// Properly close the program if something goes wrong
@@ -316,7 +323,7 @@ func main() {
 	}()
 
 	var responseContent string
-	if isGemini {
+	if runMode == "gemini" {
 		iter := gemini.Generate(str_prompt)
 		for {
 			resp, err := iter.Next()
@@ -352,7 +359,7 @@ func main() {
 				responseContent += fmt.Sprintf("%v", part)
 			}
 		}
-	} else if !*rPtr {
+	} else if runMode == "local" {
 		outputChan, err := ollama.GenerateContentStream(str_prompt)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -364,7 +371,7 @@ func main() {
 			p.Send(tea.AppendResponseMsg(line))
 		}
 
-	} else {
+	} else if runMode == "remote" {
 		outputChan, err := remote.GenerateContentStream(str_prompt)
 		if err != nil {
 			if strings.Contains(err.Error(), "file not found") {
@@ -380,6 +387,9 @@ func main() {
 			p.Send(tea.AppendResponseMsg(line))
 		}
 
+	} else {
+		log.Println("Invalid mode. Please use 'gemini', 'local', or 'remote'.")
+		os.Exit(1)
 	}
 
 	p.Send(tea.GenerationDoneMsg{})
