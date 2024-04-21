@@ -365,7 +365,7 @@ func main() {
 		}
 
 	} else {
-		responseContent, err = remote.Generate(str_prompt)
+		outputChan, err := remote.GenerateContentStream(str_prompt)
 		if err != nil {
 			if strings.Contains(err.Error(), "file not found") {
 				log.Println(err.Error())
@@ -374,7 +374,11 @@ func main() {
 			log.Printf("Error generating content remotely: %v\n", err)
 			os.Exit(1)
 		}
-		p.Send(tea.AppendResponseMsg(responseContent))
+
+		for line := range outputChan {
+			responseContent += line
+			p.Send(tea.AppendResponseMsg(line))
+		}
 
 	}
 

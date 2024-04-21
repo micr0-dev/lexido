@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,15 +16,14 @@ import (
 
 const defaultConfig = `{
 	"api_config": {
-	  "url": "https://api.example.com/v1/chat/completions", // Replace with your API endpoint
+	  "url": "https://api.example.com/endpoint/v1/chat/completions",
 	  "headers": {
 		"Content-Type": "application/json",
-		"Authorization": "Bearer 123124534545634", // Replace with your API key
 		"Accept": "application/json"
 	  },
 	  "data_template": {
 		"model": "example-model",
-		"messages": "<PROMPT>" // This is where the prompt will be inserted
+		"messages": "<PROMPT>"
 	  }
 	}
   }`
@@ -84,12 +84,12 @@ func LoadConfig() (Config, error) {
 }
 
 // ExtractOutput initiates the extraction process by unmarshaling the JSON response and calling findField recursively.
-func ExtractOutput(response []byte, field string) string {
+func ExtractOutput(response []byte, field string) (string, error) {
 	var output map[string]interface{}
 	if err := json.Unmarshal(response, &output); err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	return findField(output, field)
+	return findField(output, field), nil
 }
 
 // findField recursively searches for the field within the nested JSON structure.
@@ -123,11 +123,11 @@ func findField(data interface{}, field string) string {
 	return ""
 }
 
-// Generate sends a POST request to the API endpoint with the prompt and returns the response
-func Generate(prompt string) (string, error) {
+// Generate sends a POST request to the API endpoint with the prompt and returns a channel of responses
+func GenerateContentStream(prompt string) (<-chan string, error) {
 	config, err := LoadConfig()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Replace <PROMPT> in the DataTemplate
@@ -153,11 +153,34 @@ func Generate(prompt string) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	return ExtractOutput(responseBody, config.ApiConfig.FieldOutput), nil
+	// Create a channel to send responses
+	responseChan := make(chan string)
+
+	// Handle the response in a separate goroutine
+	go func() {
+		defer resp.Body.Close()
+		defer close(responseChan)
+		reader := bufio.NewReader(resp.Body)
+
+		for {
+			line, err := reader.ReadBytes('\n')
+			if err == io.EOF {
+				break // End of stream
+			}
+			if err != nil {
+				log.Printf("Error reading stream: %v", err)
+				break
+			}
+
+			extracted, err := ExtractOutput(line, config.ApiConfig.FieldOutput)
+			if err != nil {
+				log.Printf("Error extracting output: %v", err)
+				continue
+			}
+			responseChan <- extracted
+		}
+	}()
+
+	return responseChan, nil
 }
