@@ -99,6 +99,80 @@ curl -fsSL https://ollama.com/install.sh | sh
 #### After you have installed Ollama
 Running lexido locally is as easy as adding the `-l` flag when you want to run locally, or using `--setLocal` to run locally by default! You can also select the model you want to run with `-m` and again set it to be the default with `--setModel`. Be sure you have the model installed before attempting to run it with lexido however! 
 
+## Running remotely
+
+This guide provides instructions on how to create and customize the JSON configuration files necessary for API integration within lexido. Each configuration allows the application to interact with a different external API by specifying endpoints, headers, data templates, and specific fields to extract from API responses.
+
+### Default Configuration
+
+The default configuration template is provided as a baseline. This template includes placeholders that should be customized based on the specific API you want to integrate with.
+
+#### Example Default Configuration
+
+```json
+{
+  "api_config": {
+    "url": "https://api.example.com/endpoint/v1/chat/completions",
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    "data_template": {
+      "model": "example-model",
+      "messages": "<PROMPT>"
+    },
+    "field_to_extract": "response"
+  }
+}
+```
+
+#### Fields Explanation
+
+- **url**: The endpoint URL of the API you are calling.
+- **headers**: HTTP headers to include with your request. Common headers include `Content-Type` and `Accept`.
+- **data_template**: The data body of your request. `<PROMPT>` will be replaced dynamically by the application.
+- **field_to_extract**: The field within the API response from which data should be extracted.
+
+### Configuration for oLlama
+
+Below is an example configuration specifically set up for interacting with the oLlama API, which is assumed to run locally.
+
+#### Example oLlama Configuration
+
+```json
+{
+  "api_config": {
+    "url": "http://localhost:11434/api/generate",
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    "data_template": {
+      "model": "llama2",
+      "prompt": "<PROMPT>"
+    },
+    "field_to_extract": "response"
+  }
+}
+```
+
+#### Customization Tips
+
+- **Model**: Depending on the capabilities of the API, you might need to change the `model` value to match the model provided by the API service.
+- **Prompt**: The `<PROMPT>` placeholder in `data_template` will be replaced with the actual query or command you wish to send to the API.
+
+### Creating Your Configuration
+
+To create your own configuration:
+
+1. Copy the default configuration template. The location for the config is `~/.lexido/remoteConfig.json`
+2. Replace the `url`, `headers`, `data_template`, and `field_to_extract` fields as needed for your specific API.
+3. Ensure all placeholders like `<PROMPT>` are appropriately positioned where dynamic content is expected to be inserted by the application.
+
+### Conclusion
+
+This configuration system is designed to be flexible and extendable, allowing for easy integration with various APIs by simply modifying the JSON configuration files. For advanced configurations, you may need to adjust additional parameters.
+
 ## Usage
 - To get command suggestions:
 ```bash
