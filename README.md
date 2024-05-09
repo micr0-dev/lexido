@@ -14,7 +14,9 @@ Lexido is an innovative assistant for the command line, designed to boost your p
   <img src="./demos/teamspeak_demo.gif" alt="First GIF" width="49%"/>
   <img src="./demos/drivers_demo.gif" alt="Second GIF" width="49%"/>
 </p>
-
+<p align="center">
+  <img src="https://imgs.xkcd.com/comics/tar_2x.png" alt="XKCD 1168" width="100%"/>
+</p>
 
 ## Features
 - **Command Suggestions**: Simply type `lexido [prompt]` to get actionable command suggestions.
