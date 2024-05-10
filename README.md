@@ -27,6 +27,8 @@ Lexido is an innovative assistant for the command line, designed to boost your p
 
 ## Installation
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/lexido.svg)](https://repology.org/project/lexido/versions)
+
 ### For Arch Linux:
 Lexido is available on the AUR. Install it using the package manager of your choice such as:
 ```bash
