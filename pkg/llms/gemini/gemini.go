@@ -41,7 +41,7 @@ func Setup(apiKey string) error {
 	}
 
 	// Call Gemini Pro with the user's prompt
-	model = client.GenerativeModel("gemini-pro")
+	model = client.GenerativeModel("gemini-1.5-flash")
 
 	model.SetTemperature(0.7)
 	model.SetTopK(1)
