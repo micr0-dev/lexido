@@ -7,7 +7,7 @@
 
 
 ## Introduction
-Lexido is an innovative assistant for the command line, designed to boost your productivity and efficiency. Powered by Gemini Pro 1.0 and utilizing the free API, Lexido offers smart suggestions for commands based on your prompts and importantly **your current environment**. Whether you're installing software, managing files, or configuring system settings, Lexido streamlines the process, making it faster and more intuitive.
+Lexido is an innovative assistant for the command line, designed to boost your productivity and efficiency. Powered by Gemini 1.5 Flash and utilizing the free API, Lexido offers smart suggestions for commands based on your prompts and importantly **your current environment**. Whether you're installing software, managing files, or configuring system settings, Lexido streamlines the process, making it faster and more intuitive.
 
 ## Examples
 <p align="center">
@@ -233,7 +233,7 @@ https://ko-fi.com/micr0byte
 Distributed under the GNU Affero General Public License v3.0 or any later version. See `LICENSE` for more information.
 
 ## Acknowledgements
-- [Gemini Pro 1.0](https://deepmind.google/technologies/gemini/) for the LLM powering Lexido.
+- [Gemini 1.5 Flash](https://deepmind.google/technologies/gemini/) for the LLM powering Lexido.
 
 Made with 💚 by Micr0byte
 
