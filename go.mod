@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.6
-	github.com/google/generative-ai-go v0.16.0
+	github.com/google/generative-ai-go v0.19.0
 	google.golang.org/api v0.188.0
 )
 
